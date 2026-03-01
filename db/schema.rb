@@ -10,7 +10,18 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_01_203647) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_02_000001) do
+  create_table "cards", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.integer "position", default: 0, null: false
+    t.integer "project_id", null: false
+    t.string "status", default: "todo", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["project_id"], name: "index_cards_on_project_id"
+  end
+
   create_table "projects", force: :cascade do |t|
     t.string "agent_name"
     t.datetime "created_at", null: false
