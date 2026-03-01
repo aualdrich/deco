@@ -110,9 +110,16 @@ export default function KanbanBoard({ projectId }) {
 
     fetch(`/projects/${projectId}/cards/${activeCardId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken(),
+      },
       body: JSON.stringify({ card: { status: newCol.id, position: newPosition } }),
     }).catch((err) => console.error("Failed to persist card move:", err))
+  }
+
+  function csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content ?? ""
   }
 
   async function handleAddCard(columnId, title, description) {
@@ -122,7 +129,10 @@ export default function KanbanBoard({ projectId }) {
     try {
       const res = await fetch(`/projects/${projectId}/cards`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken(),
+        },
         body: JSON.stringify({ card: { title, description, status: columnId, position } }),
       })
       if (!res.ok) throw new Error("Failed to create card")
