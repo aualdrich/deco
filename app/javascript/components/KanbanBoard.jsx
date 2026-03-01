@@ -115,6 +115,28 @@ export default function KanbanBoard({ projectId }) {
     }).catch((err) => console.error("Failed to persist card move:", err))
   }
 
+  async function handleAddCard(columnId, title, description) {
+    const col = columns.find((c) => c.id === columnId)
+    const position = col ? col.cards.length : 0
+
+    try {
+      const res = await fetch(`/projects/${projectId}/cards`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ card: { title, description, status: columnId, position } }),
+      })
+      if (!res.ok) throw new Error("Failed to create card")
+      const newCard = await res.json()
+      setColumns((prev) =>
+        prev.map((c) =>
+          c.id === columnId ? { ...c, cards: [...c.cards, newCard] } : c,
+        ),
+      )
+    } catch (err) {
+      console.error("Failed to add card:", err)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-deco-bg">
@@ -142,7 +164,7 @@ export default function KanbanBoard({ projectId }) {
               items={col.cards.map((c) => c.id)}
               strategy={verticalListSortingStrategy}
             >
-              <KanbanColumn column={col} />
+              <KanbanColumn column={col} onAddCard={handleAddCard} />
             </SortableContext>
           ))}
         </div>
