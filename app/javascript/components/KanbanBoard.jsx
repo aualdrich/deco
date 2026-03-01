@@ -171,10 +171,7 @@ export default function KanbanBoard() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div
-        className="min-h-screen p-4 md:p-6"
-        style={{ backgroundColor: "#1a1a2e" }}
-      >
+      <div className="min-h-screen p-4 md:p-6 bg-deco-bg">
         <div className="flex flex-row gap-4 overflow-x-auto pb-4">
           {columns.map((col) => (
             <SortableContext
@@ -191,37 +188,16 @@ export default function KanbanBoard() {
       <DragOverlay>
         {activeCard ? (
           <div
+            className="rounded p-3 bg-deco-raised border border-deco-border"
             style={{
-              backgroundColor: "#3a3a4a",
-              border: "1px solid #4a4a5a",
-              borderLeft: "3px solid #c9a84c",
-              borderRadius: "4px",
-              padding: "12px",
+              borderLeft: "3px solid var(--color-deco-gold)",
               cursor: "grabbing",
               opacity: 0.95,
               boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
             }}
           >
-            <p
-              style={{
-                color: "#f5f0e8",
-                fontWeight: 600,
-                fontSize: "0.875rem",
-                margin: 0,
-              }}
-            >
-              {activeCard.title}
-            </p>
-            <p
-              style={{
-                color: "#a09880",
-                fontSize: "0.75rem",
-                marginTop: "4px",
-                marginBottom: 0,
-              }}
-            >
-              {activeCard.description}
-            </p>
+            <p className="text-deco-text font-semibold text-sm m-0">{activeCard.title}</p>
+            <p className="text-deco-muted text-xs mt-1 mb-0">{activeCard.description}</p>
           </div>
         ) : null}
       </DragOverlay>

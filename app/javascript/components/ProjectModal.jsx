@@ -75,21 +75,13 @@ export default function ProjectModal({ project, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div
-        className="absolute inset-0 bg-black/70"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} aria-hidden="true" />
 
-      <div
-        className="relative w-full max-w-lg rounded-lg p-6 shadow-xl"
-        style={{ backgroundColor: "#2d2d3a", border: "1px solid #4a4a5a" }}
-      >
+      <div className="relative w-full max-w-lg rounded-lg p-6 shadow-xl bg-deco-surface border border-deco-border">
         <div className="flex items-start justify-between gap-4">
           <h2
-            className="text-lg font-semibold uppercase tracking-widest"
+            className="text-lg font-semibold uppercase tracking-widest text-deco-gold"
             style={{
-              color: "#c9a84c",
               fontFamily: "Playfair Display, serif",
             }}
           >
@@ -98,22 +90,14 @@ export default function ProjectModal({ project, onClose, onSave }) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-2 py-1 text-sm transition-colors hover:bg-[#3a3a4a]"
-            style={{ color: "#a09880" }}
+            className="rounded px-2 py-1 text-sm transition-colors text-deco-muted hover:bg-deco-raised"
           >
             Close
           </button>
         </div>
 
         {errors.length > 0 ? (
-          <div
-            className="mt-4 rounded p-3 text-sm"
-            style={{
-              backgroundColor: "#3a2d2d",
-              border: "1px solid #7a2d2d",
-              color: "#f5f0e8",
-            }}
-          >
+          <div className="mt-4 rounded p-3 text-sm bg-red-950/40 border border-red-800 text-deco-text">
             <ul className="list-disc pl-5">
               {errors.map((msg, idx) => (
                 <li key={idx}>{msg}</li>
@@ -124,19 +108,11 @@ export default function ProjectModal({ project, onClose, onSave }) {
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label
-              className="block text-xs font-medium uppercase tracking-widest"
-              style={{ color: "#a09880" }}
-            >
-              Name <span style={{ color: "#fca5a5" }}>*</span>
+            <label className="block text-xs font-medium uppercase tracking-widest text-deco-muted">
+              Name <span className="text-red-300">*</span>
             </label>
             <input
-              className="mt-1 w-full rounded px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
-              style={{
-                backgroundColor: "#3a3a4a",
-                border: "1px solid #4a4a5a",
-                color: "#f5f0e8",
-              }}
+              className="mt-1 w-full rounded px-3 py-2 text-sm bg-deco-raised border border-deco-border text-deco-text focus:outline-none focus:border-deco-gold"
               value={values.name}
               onChange={updateField("name")}
               required
@@ -145,19 +121,11 @@ export default function ProjectModal({ project, onClose, onSave }) {
           </div>
 
           <div>
-            <label
-              className="block text-xs font-medium uppercase tracking-widest"
-              style={{ color: "#a09880" }}
-            >
+            <label className="block text-xs font-medium uppercase tracking-widest text-deco-muted">
               Directory
             </label>
             <input
-              className="mt-1 w-full rounded px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
-              style={{
-                backgroundColor: "#3a3a4a",
-                border: "1px solid #4a4a5a",
-                color: "#f5f0e8",
-              }}
+              className="mt-1 w-full rounded px-3 py-2 text-sm bg-deco-raised border border-deco-border text-deco-text focus:outline-none focus:border-deco-gold"
               value={values.directory}
               onChange={updateField("directory")}
               placeholder="/path/to/repo"
@@ -165,19 +133,11 @@ export default function ProjectModal({ project, onClose, onSave }) {
           </div>
 
           <div>
-            <label
-              className="block text-xs font-medium uppercase tracking-widest"
-              style={{ color: "#a09880" }}
-            >
+            <label className="block text-xs font-medium uppercase tracking-widest text-deco-muted">
               Agent name
             </label>
             <input
-              className="mt-1 w-full rounded px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
-              style={{
-                backgroundColor: "#3a3a4a",
-                border: "1px solid #4a4a5a",
-                color: "#f5f0e8",
-              }}
+              className="mt-1 w-full rounded px-3 py-2 text-sm bg-deco-raised border border-deco-border text-deco-text focus:outline-none focus:border-deco-gold"
               value={values.agent_name}
               onChange={updateField("agent_name")}
               placeholder="e.g. deco"
@@ -188,24 +148,14 @@ export default function ProjectModal({ project, onClose, onSave }) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded px-3 py-2 text-sm transition-colors hover:bg-[#3a3a4a]"
-              style={{
-                backgroundColor: "transparent",
-                border: "1px solid #4a4a5a",
-                color: "#a09880",
-              }}
+              className="rounded px-3 py-2 text-sm transition-colors bg-transparent border border-deco-border text-deco-muted hover:bg-deco-raised"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="rounded px-3 py-2 text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-60"
-              style={{
-                backgroundColor: "#c9a84c",
-                color: "#1a1a2e",
-                border: "1px solid #c9a84c",
-              }}
+              className="rounded px-3 py-2 text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-60 bg-deco-gold border border-deco-gold text-deco-bg"
             >
               {submitting ? "Saving…" : "Save"}
             </button>
