@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { DndContext, closestCorners, DragOverlay } from "@dnd-kit/core"
 import {
   SortableContext,
@@ -7,107 +7,47 @@ import {
 } from "@dnd-kit/sortable"
 import KanbanColumn from "./KanbanColumn"
 
-const INITIAL_COLUMNS = [
-  {
-    id: "todo",
-    title: "Todo",
-    cards: [
-      {
-        id: "card-1",
-        title: "Design system tokens",
-        description: "Define color palette and typography scale",
-      },
-      {
-        id: "card-2",
-        title: "Set up CI pipeline",
-        description: "GitHub Actions for lint and test",
-      },
-    ],
-  },
-  {
-    id: "doing",
-    title: "Doing",
-    cards: [
-      {
-        id: "card-3",
-        title: "Kanban board UI",
-        description: "Art deco styled board with drag-and-drop",
-      },
-      {
-        id: "card-4",
-        title: "shadcn/ui integration",
-        description: "Wire up component library",
-      },
-    ],
-  },
-  {
-    id: "in-review",
-    title: "In Review",
-    cards: [
-      {
-        id: "card-5",
-        title: "Rails scaffold",
-        description: "Base app with React mounted",
-      },
-    ],
-  },
-  {
-    id: "in-qa",
-    title: "In QA",
-    cards: [
-      {
-        id: "card-6",
-        title: "Project routing",
-        description: "GET /projects/:id route",
-      },
-      {
-        id: "card-7",
-        title: "RSpec setup",
-        description: "Base test configuration",
-      },
-    ],
-  },
-  {
-    id: "in-preview",
-    title: "In Preview",
-    cards: [
-      {
-        id: "card-8",
-        title: "ngrok tunnel",
-        description: "deco.ngrok.dev pointing to localhost:3001",
-      },
-    ],
-  },
-  {
-    id: "done",
-    title: "Done",
-    cards: [
-      {
-        id: "card-9",
-        title: "Initial Rails setup",
-        description: "Rails 8.1.2 + React scaffold",
-      },
-      {
-        id: "card-10",
-        title: "mise configuration",
-        description: "Ruby 3.4.5 + Node 25.7.0",
-      },
-    ],
-  },
+const COLUMN_DEFINITIONS = [
+  { id: "todo",       title: "Todo" },
+  { id: "doing",      title: "Doing" },
+  { id: "in-review",  title: "In Review" },
+  { id: "in-qa",      title: "In QA" },
+  { id: "in-preview", title: "In Preview" },
+  { id: "done",       title: "Done" },
 ]
+
+function buildColumns(cards) {
+  return COLUMN_DEFINITIONS.map((col) => ({
+    ...col,
+    cards: cards.filter((c) => c.status === col.id),
+  }))
+}
 
 function findColumnIndexByCardId(columns, cardId) {
   return columns.findIndex((col) => col.cards.some((c) => c.id === cardId))
 }
 
-export default function KanbanBoard() {
-  const [columns, setColumns] = useState(INITIAL_COLUMNS)
+export default function KanbanBoard({ projectId }) {
+  const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!projectId) return
+    fetch(`/projects/${projectId}/cards`)
+      .then((res) => res.json())
+      .then((cards) => {
+        setColumns(buildColumns(cards))
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Failed to load cards:", err)
+        setLoading(false)
+      })
+  }, [projectId])
 
   function handleDragStart(event) {
     const { active } = event
-
-    // Find the card being dragged across all columns.
     for (const col of columns) {
       const found = col.cards.find((c) => c.id === active.id)
       if (found) {
@@ -132,7 +72,6 @@ export default function KanbanBoard() {
       const sourceColIndex = findColumnIndexByCardId(prevColumns, activeCardId)
       const destColIndex = findColumnIndexByCardId(prevColumns, overCardId)
 
-      // If we can't find source/destination (e.g. dropped outside card), do nothing.
       if (sourceColIndex === -1 || destColIndex === -1) return prevColumns
 
       const sourceCol = prevColumns[sourceColIndex]
@@ -143,26 +82,52 @@ export default function KanbanBoard() {
 
       if (activeIndex === -1 || overIndex === -1) return prevColumns
 
-      // Reorder within the same column.
+      let nextColumns
+
       if (sourceColIndex === destColIndex) {
         const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
-        return prevColumns.map((col, idx) =>
+        nextColumns = prevColumns.map((col, idx) =>
           idx === sourceColIndex ? { ...col, cards: nextCards } : col,
         )
+      } else {
+        const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
+        const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
+        const nextDestCards = [...destCol.cards]
+        nextDestCards.splice(overIndex, 0, movingCard)
+
+        nextColumns = prevColumns.map((col, idx) => {
+          if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
+          if (idx === destColIndex) return { ...col, cards: nextDestCards }
+          return col
+        })
       }
 
-      // Move between columns.
-      const movingCard = sourceCol.cards[activeIndex]
-      const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
-      const nextDestCards = [...destCol.cards]
-      nextDestCards.splice(overIndex, 0, movingCard)
+      // Persist new status + position to DB (optimistic — local state already updated)
+      const newColIndex = findColumnIndexByCardId(nextColumns, activeCardId)
+      const newCol = nextColumns[newColIndex]
+      const newPosition = newCol.cards.findIndex((c) => c.id === activeCardId)
 
-      return prevColumns.map((col, idx) => {
-        if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
-        if (idx === destColIndex) return { ...col, cards: nextDestCards }
-        return col
-      })
+      fetch(`/projects/${projectId}/cards/${activeCardId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ card: { status: newCol.id, position: newPosition } }),
+      }).catch((err) => console.error("Failed to persist card move:", err))
+
+      return nextColumns
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-deco-bg">
+        <p
+          className="text-deco-muted text-sm uppercase tracking-widest"
+          style={{ fontFamily: "Playfair Display, serif" }}
+        >
+          Loading board…
+        </p>
+      </div>
+    )
   }
 
   return (
