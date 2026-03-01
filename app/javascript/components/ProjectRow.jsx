@@ -20,22 +20,31 @@ export default function ProjectRow({ project, onEdit, onDelete }) {
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") handleRowClick()
       }}
-      className="flex items-center justify-between gap-4 rounded border border-slate-200 bg-white px-4 py-3 shadow-sm hover:bg-slate-50"
+      className="flex items-center justify-between gap-4 rounded px-4 py-3 transition-colors hover:bg-[#343445]"
+      style={{
+        backgroundColor: "#2d2d3a",
+        border: "1px solid #4a4a5a",
+        borderLeft: "3px solid #c9a84c",
+      }}
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <div className="truncate text-sm font-semibold text-slate-900">
+          <div className="truncate text-sm font-semibold" style={{ color: "#f5f0e8" }}>
             {project.name}
           </div>
         </div>
 
-        <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600">
+        <div className="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-xs" style={{ color: "#a09880" }}>
           <div className="truncate">
-            <span className="font-medium text-slate-700">Directory:</span>{" "}
+            <span className="font-medium" style={{ color: "#a09880" }}>
+              Directory:
+            </span>{" "}
             {project.directory || "—"}
           </div>
           <div className="truncate">
-            <span className="font-medium text-slate-700">Agent:</span>{" "}
+            <span className="font-medium" style={{ color: "#a09880" }}>
+              Agent:
+            </span>{" "}
             {project.agent_name || "—"}
           </div>
         </div>
@@ -44,21 +53,33 @@ export default function ProjectRow({ project, onEdit, onDelete }) {
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
         {confirmingDelete ? (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-700">Are you sure?</span>
+            <span className="text-xs" style={{ color: "#a09880" }}>
+              Are you sure?
+            </span>
             <button
               type="button"
               onClick={() => {
                 onDelete(project.id)
                 setConfirmingDelete(false)
               }}
-              className="rounded bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700"
+              className="rounded px-2 py-1 text-xs font-medium transition-colors hover:bg-[#4a2d2d]"
+              style={{
+                backgroundColor: "transparent",
+                border: "1px solid #b91c1c",
+                color: "#fecaca",
+              }}
             >
               Confirm
             </button>
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              className="rounded px-2 py-1 text-xs transition-colors hover:bg-[#3a3a4a]"
+              style={{
+                backgroundColor: "transparent",
+                border: "1px solid #4a4a5a",
+                color: "#a09880",
+              }}
             >
               Cancel
             </button>
@@ -68,14 +89,24 @@ export default function ProjectRow({ project, onEdit, onDelete }) {
             <button
               type="button"
               onClick={() => onEdit(project)}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              className="rounded px-2 py-1 text-xs transition-colors hover:bg-[#3a3a4a]"
+              style={{
+                backgroundColor: "transparent",
+                border: "1px solid #c9a84c",
+                color: "#c9a84c",
+              }}
             >
               Edit
             </button>
             <button
               type="button"
               onClick={() => setConfirmingDelete(true)}
-              className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100"
+              className="rounded px-2 py-1 text-xs transition-colors hover:bg-[#4a2d2d]"
+              style={{
+                backgroundColor: "transparent",
+                border: "1px solid #b91c1c",
+                color: "#fca5a5",
+              }}
             >
               Delete
             </button>

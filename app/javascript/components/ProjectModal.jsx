@@ -67,36 +67,53 @@ export default function ProjectModal({ project, onClose, onSave }) {
         setErrors([`Request failed (${res.status})`])
       }
     } catch (err) {
-      setErrors([err?.message ?? "Request failed"]) 
+      setErrors([err?.message ?? "Request failed"])
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-black/70"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      <div className="relative w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
+      <div
+        className="relative w-full max-w-lg rounded-lg p-6 shadow-xl"
+        style={{ backgroundColor: "#2d2d3a", border: "1px solid #4a4a5a" }}
+      >
         <div className="flex items-start justify-between gap-4">
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2
+            className="text-lg font-semibold uppercase tracking-widest"
+            style={{
+              color: "#c9a84c",
+              fontFamily: "Playfair Display, serif",
+            }}
+          >
             {isEdit ? "Edit Project" : "New Project"}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded px-2 py-1 text-slate-600 hover:bg-slate-100"
+            className="rounded px-2 py-1 text-sm transition-colors hover:bg-[#3a3a4a]"
+            style={{ color: "#a09880" }}
           >
             Close
           </button>
         </div>
 
         {errors.length > 0 ? (
-          <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div
+            className="mt-4 rounded p-3 text-sm"
+            style={{
+              backgroundColor: "#3a2d2d",
+              border: "1px solid #7a2d2d",
+              color: "#f5f0e8",
+            }}
+          >
             <ul className="list-disc pl-5">
               {errors.map((msg, idx) => (
                 <li key={idx}>{msg}</li>
@@ -107,11 +124,19 @@ export default function ProjectModal({ project, onClose, onSave }) {
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">
-              Name <span className="text-red-600">*</span>
+            <label
+              className="block text-xs font-medium uppercase tracking-widest"
+              style={{ color: "#a09880" }}
+            >
+              Name <span style={{ color: "#fca5a5" }}>*</span>
             </label>
             <input
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none"
+              className="mt-1 w-full rounded px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
+              style={{
+                backgroundColor: "#3a3a4a",
+                border: "1px solid #4a4a5a",
+                color: "#f5f0e8",
+              }}
               value={values.name}
               onChange={updateField("name")}
               required
@@ -120,9 +145,19 @@ export default function ProjectModal({ project, onClose, onSave }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700">Directory</label>
+            <label
+              className="block text-xs font-medium uppercase tracking-widest"
+              style={{ color: "#a09880" }}
+            >
+              Directory
+            </label>
             <input
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none"
+              className="mt-1 w-full rounded px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
+              style={{
+                backgroundColor: "#3a3a4a",
+                border: "1px solid #4a4a5a",
+                color: "#f5f0e8",
+              }}
               value={values.directory}
               onChange={updateField("directory")}
               placeholder="/path/to/repo"
@@ -130,9 +165,19 @@ export default function ProjectModal({ project, onClose, onSave }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700">Agent name</label>
+            <label
+              className="block text-xs font-medium uppercase tracking-widest"
+              style={{ color: "#a09880" }}
+            >
+              Agent name
+            </label>
             <input
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none"
+              className="mt-1 w-full rounded px-3 py-2 text-sm focus:outline-none focus:border-[#c9a84c]"
+              style={{
+                backgroundColor: "#3a3a4a",
+                border: "1px solid #4a4a5a",
+                color: "#f5f0e8",
+              }}
               value={values.agent_name}
               onChange={updateField("agent_name")}
               placeholder="e.g. deco"
@@ -143,14 +188,24 @@ export default function ProjectModal({ project, onClose, onSave }) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              className="rounded px-3 py-2 text-sm transition-colors hover:bg-[#3a3a4a]"
+              style={{
+                backgroundColor: "transparent",
+                border: "1px solid #4a4a5a",
+                color: "#a09880",
+              }}
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="rounded bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+              className="rounded px-3 py-2 text-sm font-medium transition-colors hover:opacity-90 disabled:opacity-60"
+              style={{
+                backgroundColor: "#c9a84c",
+                color: "#1a1a2e",
+                border: "1px solid #c9a84c",
+              }}
             >
               {submitting ? "Saving…" : "Save"}
             </button>

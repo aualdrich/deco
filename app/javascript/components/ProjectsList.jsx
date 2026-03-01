@@ -93,12 +93,17 @@ export default function ProjectsList() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-4xl px-4 py-8">
+    <div className="min-h-screen" style={{ backgroundColor: "#1a1a2e" }}>
+      <div className="mx-auto max-w-4xl px-4 py-10">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Projects</h1>
-            <p className="mt-1 text-sm text-slate-600">
+            <h1
+              className="text-2xl md:text-3xl font-semibold uppercase tracking-widest"
+              style={{ color: "#c9a84c", fontFamily: "Playfair Display, serif" }}
+            >
+              Projects
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: "#a09880" }}>
               Create a project, then jump into its board.
             </p>
           </div>
@@ -106,7 +111,12 @@ export default function ProjectsList() {
           <button
             type="button"
             onClick={openCreate}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="rounded px-4 py-2 text-sm font-medium transition-colors hover:bg-[#3a3a4a]"
+            style={{
+              border: "1px solid #c9a84c",
+              color: "#c9a84c",
+              backgroundColor: "transparent",
+            }}
           >
             New Project
           </button>
@@ -114,26 +124,51 @@ export default function ProjectsList() {
 
         <div className="mt-6">
           {loading ? (
-            <div className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-700">
+            <div
+              className="rounded p-4 text-sm"
+              style={{
+                backgroundColor: "#2d2d3a",
+                border: "1px solid #4a4a5a",
+                color: "#f5f0e8",
+              }}
+            >
               Loading…
             </div>
           ) : loadError ? (
-            <div className="rounded border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <div
+              className="rounded p-4 text-sm"
+              style={{
+                backgroundColor: "#3a2d2d",
+                border: "1px solid #7a2d2d",
+                color: "#f5f0e8",
+              }}
+            >
               {loadError}
             </div>
           ) : projects.length === 0 ? (
-            <div className="rounded border border-dashed border-slate-300 bg-white p-10 text-center">
-              <div className="text-sm font-medium text-slate-900">
+            <div
+              className="rounded p-10 text-center"
+              style={{
+                backgroundColor: "#2d2d3a",
+                border: "1px dashed #c9a84c",
+              }}
+            >
+              <div className="text-sm font-medium" style={{ color: "#f5f0e8" }}>
                 No projects yet.
               </div>
-              <div className="mt-1 text-sm text-slate-600">
+              <div className="mt-1 text-sm" style={{ color: "#a09880" }}>
                 Create your first one.
               </div>
               <div className="mt-4">
                 <button
                   type="button"
                   onClick={openCreate}
-                  className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                  className="rounded px-4 py-2 text-sm font-medium transition-colors hover:bg-[#3a3a4a]"
+                  style={{
+                    border: "1px solid #c9a84c",
+                    color: "#c9a84c",
+                    backgroundColor: "transparent",
+                  }}
                 >
                   New Project
                 </button>
