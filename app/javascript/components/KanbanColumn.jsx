@@ -71,14 +71,14 @@ export default function KanbanColumn({ column, onAddCard }) {
           <div className="flex gap-2">
             <button
               type="submit"
-              className="flex-1 rounded py-2.5 text-xs font-semibold uppercase tracking-widest bg-deco-gold text-deco-bg hover:opacity-90 transition-opacity"
+              className="flex-1 rounded py-4 text-sm font-semibold uppercase tracking-widest bg-deco-gold text-deco-bg hover:opacity-90 transition-opacity"
             >
               Add
             </button>
             <button
               type="button"
               onClick={cancel}
-              className="flex-1 rounded py-2.5 text-xs font-semibold uppercase tracking-widest bg-deco-raised text-deco-muted hover:text-deco-text border border-deco-border transition-colors"
+              className="flex-1 rounded py-4 text-sm font-semibold uppercase tracking-widest bg-deco-raised text-deco-muted hover:text-deco-text border border-deco-border transition-colors"
             >
               Cancel
             </button>
