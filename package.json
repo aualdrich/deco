@@ -2,7 +2,7 @@
   "name": "app",
   "private": true,
   "scripts": {
-    "build": "esbuild app/javascript/*.* --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.js=jsx",
+    "build": "esbuild app/javascript/*.* --bundle --sourcemap --format=esm --outdir=app/assets/builds --public-path=/assets --loader:.js=jsx --jsx=automatic",
     "build:css": "./node_modules/.bin/tailwindcss -i ./app/assets/stylesheets/application.css -o ./app/assets/builds/application.css",
     "test": "vitest run",
     "test:watch": "vitest"
