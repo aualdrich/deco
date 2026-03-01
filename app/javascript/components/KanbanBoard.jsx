@@ -68,53 +68,51 @@ export default function KanbanBoard({ projectId }) {
 
     if (activeCardId === overCardId) return
 
-    setColumns((prevColumns) => {
-      const sourceColIndex = findColumnIndexByCardId(prevColumns, activeCardId)
-      const destColIndex = findColumnIndexByCardId(prevColumns, overCardId)
+    const sourceColIndex = findColumnIndexByCardId(columns, activeCardId)
+    const destColIndex = findColumnIndexByCardId(columns, overCardId)
 
-      if (sourceColIndex === -1 || destColIndex === -1) return prevColumns
+    if (sourceColIndex === -1 || destColIndex === -1) return
 
-      const sourceCol = prevColumns[sourceColIndex]
-      const destCol = prevColumns[destColIndex]
+    const sourceCol = columns[sourceColIndex]
+    const destCol = columns[destColIndex]
 
-      const activeIndex = sourceCol.cards.findIndex((c) => c.id === activeCardId)
-      const overIndex = destCol.cards.findIndex((c) => c.id === overCardId)
+    const activeIndex = sourceCol.cards.findIndex((c) => c.id === activeCardId)
+    const overIndex = destCol.cards.findIndex((c) => c.id === overCardId)
 
-      if (activeIndex === -1 || overIndex === -1) return prevColumns
+    if (activeIndex === -1 || overIndex === -1) return
 
-      let nextColumns
+    let nextColumns
 
-      if (sourceColIndex === destColIndex) {
-        const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
-        nextColumns = prevColumns.map((col, idx) =>
-          idx === sourceColIndex ? { ...col, cards: nextCards } : col,
-        )
-      } else {
-        const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
-        const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
-        const nextDestCards = [...destCol.cards]
-        nextDestCards.splice(overIndex, 0, movingCard)
+    if (sourceColIndex === destColIndex) {
+      const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
+      nextColumns = columns.map((col, idx) =>
+        idx === sourceColIndex ? { ...col, cards: nextCards } : col,
+      )
+    } else {
+      const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
+      const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
+      const nextDestCards = [...destCol.cards]
+      nextDestCards.splice(overIndex, 0, movingCard)
 
-        nextColumns = prevColumns.map((col, idx) => {
-          if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
-          if (idx === destColIndex) return { ...col, cards: nextDestCards }
-          return col
-        })
-      }
+      nextColumns = columns.map((col, idx) => {
+        if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
+        if (idx === destColIndex) return { ...col, cards: nextDestCards }
+        return col
+      })
+    }
 
-      // Persist new status + position to DB (optimistic — local state already updated)
-      const newColIndex = findColumnIndexByCardId(nextColumns, activeCardId)
-      const newCol = nextColumns[newColIndex]
-      const newPosition = newCol.cards.findIndex((c) => c.id === activeCardId)
+    // Update local state first (optimistic)
+    setColumns(nextColumns)
 
-      fetch(`/projects/${projectId}/cards/${activeCardId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ card: { status: newCol.id, position: newPosition } }),
-      }).catch((err) => console.error("Failed to persist card move:", err))
+    // Persist new status + position to DB
+    const newCol = nextColumns[findColumnIndexByCardId(nextColumns, activeCardId)]
+    const newPosition = newCol.cards.findIndex((c) => c.id === activeCardId)
 
-      return nextColumns
-    })
+    fetch(`/projects/${projectId}/cards/${activeCardId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ card: { status: newCol.id, position: newPosition } }),
+    }).catch((err) => console.error("Failed to persist card move:", err))
   }
 
   if (loading) {
