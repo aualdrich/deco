@@ -20,15 +20,10 @@ export default function KanbanCard({ card }) {
     return (
       <div
         ref={setNodeRef}
+        className="rounded p-3 min-h-[60px] opacity-40 bg-transparent border border-dashed border-deco-border"
         style={{
           ...style,
-          backgroundColor: "transparent",
-          border: "1px dashed #4a4a5a",
-          borderLeft: "3px dashed #c9a84c",
-          borderRadius: "4px",
-          padding: "12px",
-          minHeight: "60px",
-          opacity: 0.4,
+          borderLeft: "3px dashed var(--color-deco-gold)",
         }}
       />
     )
@@ -39,20 +34,14 @@ export default function KanbanCard({ card }) {
       ref={setNodeRef}
       style={{
         ...style,
-        backgroundColor: "#3a3a4a",
-        border: "1px solid #4a4a5a",
-        borderLeft: "3px solid #c9a84c",
+        borderLeft: "3px solid var(--color-deco-gold)",
       }}
       {...attributes}
       {...listeners}
-      className="rounded p-3 cursor-grab active:cursor-grabbing"
+      className="rounded p-3 cursor-grab active:cursor-grabbing bg-deco-raised border border-deco-border"
     >
-      <p className="font-semibold text-sm" style={{ color: "#f5f0e8" }}>
-        {card.title}
-      </p>
-      <p className="text-xs mt-1" style={{ color: "#a09880" }}>
-        {card.description}
-      </p>
+      <p className="font-semibold text-sm text-deco-text">{card.title}</p>
+      <p className="text-xs mt-1 text-deco-muted">{card.description}</p>
     </div>
   )
 }

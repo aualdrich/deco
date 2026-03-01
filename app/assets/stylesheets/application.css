@@ -1,3 +1,15 @@
 @import "tailwindcss";
 @source "../../javascript/**/*.{js,jsx}";
 @source "../../views/**/*.{html,erb}";
+
+@theme {
+  --color-deco-bg: #1a1a2e;
+  --color-deco-surface: #2d2d3a;
+  --color-deco-raised: #3a3a4a;
+  --color-deco-border: #4a4a5a;
+  --color-deco-gold: #c9a84c;
+  --color-deco-text: #f5f0e8;
+  --color-deco-muted: #a09880;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap');
