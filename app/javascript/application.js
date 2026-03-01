@@ -1,8 +1,14 @@
 import React from "react"
 import { createRoot } from "react-dom/client"
 import HelloWorld from "./components/HelloWorld"
+import KanbanBoard from "./components/KanbanBoard"
 
-const container = document.getElementById("react-root")
-if (container) {
-  createRoot(container).render(<HelloWorld />)
+const helloContainer = document.getElementById("react-root")
+if (helloContainer) {
+  createRoot(helloContainer).render(<HelloWorld />)
+}
+
+const kanbanContainer = document.getElementById("kanban-board-root")
+if (kanbanContainer) {
+  createRoot(kanbanContainer).render(<KanbanBoard />)
 }
