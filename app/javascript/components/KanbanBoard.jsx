@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { DndContext, closestCorners } from "@dnd-kit/core"
+import { DndContext, closestCorners, DragOverlay } from "@dnd-kit/core"
 import {
   SortableContext,
   arrayMove,
@@ -102,8 +102,24 @@ function findColumnIndexByCardId(columns, cardId) {
 
 export default function KanbanBoard() {
   const [columns, setColumns] = useState(INITIAL_COLUMNS)
+  const [activeCard, setActiveCard] = useState(null)
+
+  function handleDragStart(event) {
+    const { active } = event
+
+    // Find the card being dragged across all columns.
+    for (const col of columns) {
+      const found = col.cards.find((c) => c.id === active.id)
+      if (found) {
+        setActiveCard(found)
+        break
+      }
+    }
+  }
 
   function handleDragEnd(event) {
+    setActiveCard(null)
+
     const { active, over } = event
     if (!over) return
 
@@ -150,7 +166,11 @@ export default function KanbanBoard() {
   }
 
   return (
-    <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+    <DndContext
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div
         className="min-h-screen p-4 md:p-6"
         style={{ backgroundColor: "#1a1a2e" }}
@@ -167,6 +187,44 @@ export default function KanbanBoard() {
           ))}
         </div>
       </div>
+
+      <DragOverlay>
+        {activeCard ? (
+          <div
+            style={{
+              backgroundColor: "#3a3a4a",
+              border: "1px solid #4a4a5a",
+              borderLeft: "3px solid #c9a84c",
+              borderRadius: "4px",
+              padding: "12px",
+              cursor: "grabbing",
+              opacity: 0.95,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+            }}
+          >
+            <p
+              style={{
+                color: "#f5f0e8",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                margin: 0,
+              }}
+            >
+              {activeCard.title}
+            </p>
+            <p
+              style={{
+                color: "#a09880",
+                fontSize: "0.75rem",
+                marginTop: "4px",
+                marginBottom: 0,
+              }}
+            >
+              {activeCard.description}
+            </p>
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   )
 }

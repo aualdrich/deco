@@ -2,18 +2,22 @@ import React from "react"
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, within, act } from "@testing-library/react"
 
-// Capture the onDragEnd handler passed to DndContext so we can invoke it directly.
+// Capture the handlers passed to DndContext so we can invoke them directly.
+let lastOnDragStart
 let lastOnDragEnd
 
 vi.mock("@dnd-kit/core", async () => {
   const React = (await import("react")).default
 
   return {
-    // DndContext is a simple wrapper that stores onDragEnd for tests.
-    DndContext: ({ children, onDragEnd }) => {
+    // DndContext is a simple wrapper that stores handlers for tests.
+    DndContext: ({ children, onDragStart, onDragEnd }) => {
+      lastOnDragStart = onDragStart
       lastOnDragEnd = onDragEnd
       return React.createElement(React.Fragment, null, children)
     },
+    DragOverlay: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
     closestCorners: vi.fn(),
   }
 })
@@ -63,6 +67,7 @@ function columnContainerByHeader(headerText) {
 
 describe("KanbanBoard", () => {
   beforeEach(() => {
+    lastOnDragStart = undefined
     lastOnDragEnd = undefined
   })
 
