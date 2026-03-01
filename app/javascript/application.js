@@ -6,10 +6,10 @@ import ProjectsList from "./components/ProjectsList"
 const rootContainer = document.getElementById("react-root")
 if (rootContainer) {
   // Both the home page and /projects currently use #react-root.
-  // Mount the correct component based on URL.
-  const path = window.location.pathname
+  // Mount the correct component based on a server-rendered hint.
+  const component = rootContainer.dataset.component
 
-  if (path === "/projects" || path === "/projects/") {
+  if (component === "ProjectsList") {
     createRoot(rootContainer).render(<ProjectsList />)
   } else {
     createRoot(rootContainer).render(<HelloWorld />)

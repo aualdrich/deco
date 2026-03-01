@@ -66,7 +66,7 @@ export default function ProjectsList() {
     setProjects((prev) => {
       const exists = prev.some((p) => p.id === savedProject.id)
       if (exists) return prev.map((p) => (p.id === savedProject.id ? savedProject : p))
-      return [savedProject, ...prev]
+      return [...prev, savedProject].sort((a, b) => a.name.localeCompare(b.name))
     })
 
     closeModal()
