@@ -1,5 +1,5 @@
 class ProjectsController < ApplicationController
-  before_action :set_project, only: [:show, :update, :destroy]
+  before_action :set_project, only: [:show, :board, :update, :destroy]
 
   def index
     @projects = Project.all.order(:name)
@@ -10,6 +10,9 @@ class ProjectsController < ApplicationController
   end
 
   def show
+  end
+
+  def board
   end
 
   def create

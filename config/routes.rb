@@ -13,5 +13,9 @@ Rails.application.routes.draw do
   # Defines the root path route ("/")
   root "projects#index"
 
-  resources :projects, only: [:index, :show, :create, :update, :destroy]
+  resources :projects, only: [:index, :show, :create, :update, :destroy] do
+    member do
+      get :board
+    end
+  end
 end
