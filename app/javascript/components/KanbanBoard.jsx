@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { DndContext, closestCorners, DragOverlay } from "@dnd-kit/core"
+import { DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import {
   SortableContext,
   arrayMove,
@@ -7,6 +7,7 @@ import {
 } from "@dnd-kit/sortable"
 import KanbanColumn from "./KanbanColumn"
 import BoardTopBar from "./BoardTopBar"
+import CardModal from "./CardModal"
 
 const COLUMN_DEFINITIONS = [
   { id: "todo",       title: "Todo" },
@@ -29,8 +30,12 @@ function findColumnIndexByCardId(columns, cardId) {
 }
 
 export default function KanbanBoard({ projectId, projectName }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  )
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
+  const [selectedCard, setSelectedCard] = useState(null)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -131,6 +136,22 @@ export default function KanbanBoard({ projectId, projectName }) {
     return document.querySelector('meta[name="csrf-token"]')?.content ?? ""
   }
 
+  function handleCardClick(card) {
+    setSelectedCard(card)
+  }
+
+  function handleArchiveCard(cardId) {
+    setColumns((prev) =>
+      prev.map((col) => ({ ...col, cards: col.cards.filter((c) => c.id !== cardId) }))
+    )
+  }
+
+  function handleRestoreCard(cardId) {
+    setColumns((prev) =>
+      prev.map((col) => ({ ...col, cards: col.cards.filter((c) => c.id !== cardId) }))
+    )
+  }
+
   async function handleAddCard(columnId, title, description) {
     const col = columns.find((c) => c.id === columnId)
     const position = col ? col.cards.length : 0
@@ -170,7 +191,19 @@ export default function KanbanBoard({ projectId, projectName }) {
   }
 
   return (
+    <>
+    {selectedCard && (
+      <CardModal
+        card={selectedCard}
+        projectId={projectId}
+        readOnly={statusFilter === "archived"}
+        onClose={() => setSelectedCard(null)}
+        onArchive={handleArchiveCard}
+        onRestore={handleRestoreCard}
+      />
+    )}
     <DndContext
+      sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
@@ -189,7 +222,7 @@ export default function KanbanBoard({ projectId, projectName }) {
               items={col.cards.map((c) => c.id)}
               strategy={verticalListSortingStrategy}
             >
-              <KanbanColumn column={col} onAddCard={handleAddCard} />
+              <KanbanColumn column={col} onAddCard={handleAddCard} onCardClick={handleCardClick} />
             </SortableContext>
           ))}
         </div>
@@ -214,5 +247,6 @@ export default function KanbanBoard({ projectId, projectName }) {
         ) : null}
       </DragOverlay>
     </DndContext>
+    </>
   )
 }
