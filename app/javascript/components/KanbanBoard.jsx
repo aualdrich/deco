@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
+import { DndContext, closestCorners, pointerWithin, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import {
   SortableContext,
   arrayMove,
@@ -17,6 +17,16 @@ const COLUMN_DEFINITIONS = [
   { id: "in-preview", title: "In Preview" },
   { id: "done",       title: "Done" },
 ]
+
+// Prefer cards over columns when both are under the pointer
+function customCollision(args) {
+  const hits = pointerWithin(args)
+  if (hits.length > 0) {
+    const cardHit = hits.find(({ id }) => !COLUMN_DEFINITIONS.some((c) => c.id === id))
+    return cardHit ? [cardHit] : [hits[0]]
+  }
+  return closestCorners(args)
+}
 
 function buildColumns(cards) {
   return COLUMN_DEFINITIONS.map((col) => ({
@@ -82,35 +92,51 @@ export default function KanbanBoard({ projectId, projectName }) {
     if (!over) return
 
     const activeCardId = active.id
-    const overCardId = over.id
+    const overId = over.id
 
-    if (activeCardId === overCardId) return
+    if (activeCardId === overId) return
 
     const sourceColIndex = findColumnIndexByCardId(columns, activeCardId)
-    const destColIndex = findColumnIndexByCardId(columns, overCardId)
+    if (sourceColIndex === -1) return
 
-    if (sourceColIndex === -1 || destColIndex === -1) return
+    // over.id may be a column ID (dropping on empty space / empty column)
+    // or a card ID (dropping directly on another card)
+    const isOverColumn = COLUMN_DEFINITIONS.some((col) => col.id === overId)
+    const destColIndex = isOverColumn
+      ? columns.findIndex((col) => col.id === overId)
+      : findColumnIndexByCardId(columns, overId)
+
+    if (destColIndex === -1) return
 
     const sourceCol = columns[sourceColIndex]
     const destCol = columns[destColIndex]
-
     const activeIndex = sourceCol.cards.findIndex((c) => c.id === activeCardId)
-    const overIndex = destCol.cards.findIndex((c) => c.id === overCardId)
-
-    if (activeIndex === -1 || overIndex === -1) return
+    if (activeIndex === -1) return
 
     let nextColumns
 
     if (sourceColIndex === destColIndex) {
+      // Same-column reorder — only meaningful when dropping on a sibling card
+      if (isOverColumn) return
+      const overIndex = destCol.cards.findIndex((c) => c.id === overId)
+      if (overIndex === -1) return
       const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
       nextColumns = columns.map((col, idx) =>
         idx === sourceColIndex ? { ...col, cards: nextCards } : col,
       )
     } else {
+      // Cross-column move
       const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
       const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
       const nextDestCards = [...destCol.cards]
-      nextDestCards.splice(overIndex, 0, movingCard)
+
+      if (isOverColumn) {
+        // Dropped on empty space — append to end of destination column
+        nextDestCards.push(movingCard)
+      } else {
+        const overIndex = destCol.cards.findIndex((c) => c.id === overId)
+        nextDestCards.splice(overIndex >= 0 ? overIndex : nextDestCards.length, 0, movingCard)
+      }
 
       nextColumns = columns.map((col, idx) => {
         if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
@@ -121,7 +147,8 @@ export default function KanbanBoard({ projectId, projectName }) {
 
     setColumns(nextColumns)
 
-    const newCol = nextColumns[findColumnIndexByCardId(nextColumns, activeCardId)]
+    const newColIndex = findColumnIndexByCardId(nextColumns, activeCardId)
+    const newCol = nextColumns[newColIndex]
     const newPosition = newCol.cards.findIndex((c) => c.id === activeCardId)
 
     fetch(`/projects/${projectId}/cards/${activeCardId}`, {
@@ -226,7 +253,7 @@ export default function KanbanBoard({ projectId, projectName }) {
     )}
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={customCollision}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
