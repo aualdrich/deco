@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { DndContext, closestCorners, DragOverlay } from "@dnd-kit/core"
+import { DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import {
   SortableContext,
   arrayMove,
@@ -31,6 +31,9 @@ function findColumnIndexByCardId(columns, cardId) {
 
 export default function KanbanBoard({ projectId, projectName }) {
   const dragActivated = useRef(false)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
   const [selectedCard, setSelectedCard] = useState(null)
@@ -222,6 +225,7 @@ export default function KanbanBoard({ projectId, projectName }) {
       />
     )}
     <DndContext
+      sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
