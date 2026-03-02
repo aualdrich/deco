@@ -4,7 +4,7 @@ class CardsController < ApplicationController
 
   def index
     @cards = @project.cards
-    render json: @cards
+    render json: @cards.as_json(include: :steps)
   end
 
   def create

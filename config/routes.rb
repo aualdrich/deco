@@ -17,6 +17,8 @@ Rails.application.routes.draw do
     member do
       get :board
     end
-    resources :cards, only: [:index, :create, :update]
+    resources :cards, only: [:index, :create, :update] do
+      resources :steps, only: [:create, :update, :destroy]
+    end
   end
 end
