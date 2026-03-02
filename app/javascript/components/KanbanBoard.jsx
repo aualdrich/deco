@@ -6,6 +6,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import KanbanColumn from "./KanbanColumn"
+import csrfToken from "../lib/csrf"
 
 const COLUMN_DEFINITIONS = [
   { id: "todo",       title: "Todo" },
@@ -30,6 +31,7 @@ function findColumnIndexByCardId(columns, cardId) {
 export default function KanbanBoard({ projectId }) {
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
+  const [selectedCard, setSelectedCard] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -118,10 +120,6 @@ export default function KanbanBoard({ projectId }) {
     }).catch((err) => console.error("Failed to persist card move:", err))
   }
 
-  function csrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.content ?? ""
-  }
-
   async function handleAddCard(columnId, title, description) {
     const col = columns.find((c) => c.id === columnId)
     const position = col ? col.cards.length : 0
@@ -174,7 +172,7 @@ export default function KanbanBoard({ projectId }) {
               items={col.cards.map((c) => c.id)}
               strategy={verticalListSortingStrategy}
             >
-              <KanbanColumn column={col} onAddCard={handleAddCard} />
+              <KanbanColumn column={col} onAddCard={handleAddCard} onCardClick={setSelectedCard} />
             </SortableContext>
           ))}
         </div>

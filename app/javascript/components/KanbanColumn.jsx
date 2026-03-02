@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react"
 import KanbanCard from "./KanbanCard"
 
-export default function KanbanColumn({ column, onAddCard }) {
+export default function KanbanColumn({ column, onAddCard, onCardClick }) {
   const [isAdding, setIsAdding] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -43,7 +43,7 @@ export default function KanbanColumn({ column, onAddCard }) {
 
       <div className="flex flex-col gap-2">
         {column.cards.map((card) => (
-          <KanbanCard key={card.id} card={card} />
+          <KanbanCard key={card.id} card={card} onCardClick={onCardClick} />
         ))}
       </div>
 
