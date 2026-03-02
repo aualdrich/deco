@@ -22,32 +22,50 @@ function mockFetch({ ok = true } = {}) {
 }
 
 describe("CardModal — active card", () => {
-  it("renders the card title", () => {
+  it("renders the card title in a text input", () => {
     render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
-    expect(screen.getByText("Fix the switchboard")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("Fix the switchboard")).toBeInTheDocument()
   })
 
-  it("renders the card description", () => {
+  it("renders the description in a textarea", () => {
     render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
-    expect(screen.getByText("A very important task")).toBeInTheDocument()
+    const textarea = screen.getByPlaceholderText(/add a description/i)
+    expect(textarea.tagName).toBe("TEXTAREA")
+    expect(textarea.value).toBe("A very important task")
   })
 
-  it("shows the Archive button", () => {
+  it("title and description fields are editable", () => {
     render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
-    expect(screen.getByRole("button", { name: /archive/i })).toBeInTheDocument()
+    const titleInput = screen.getByDisplayValue("Fix the switchboard")
+    fireEvent.change(titleInput, { target: { value: "Updated title" } })
+    expect(screen.getByDisplayValue("Updated title")).toBeInTheDocument()
   })
 
-  it("does not show the Restore button for active cards", () => {
+  it("shows the Archive button in initial state", () => {
     render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
-    expect(screen.queryByRole("button", { name: /restore/i })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /^archive$/i })).toBeInTheDocument()
   })
 
-  it("shows confirmation prompt after first Archive click", () => {
+  it("does not show Cancel or Yes, archive in initial state", () => {
+    render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
+    expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /yes, archive/i })).not.toBeInTheDocument()
+  })
+
+  it("shows confirmation prompt after clicking Archive", () => {
     render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
     fireEvent.click(screen.getByRole("button", { name: /^archive$/i }))
-    expect(screen.getByText(/archive this card/i)).toBeInTheDocument()
+    expect(screen.getByText(/are you sure/i)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /yes, archive/i })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument()
+  })
+
+  it("hides confirmation if Cancel is clicked", () => {
+    render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
+    fireEvent.click(screen.getByRole("button", { name: /^archive$/i }))
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }))
+    expect(screen.queryByText(/are you sure/i)).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /^archive$/i })).toBeInTheDocument()
   })
 
   it("calls onArchive and onClose after confirming archive", async () => {
@@ -55,23 +73,17 @@ describe("CardModal — active card", () => {
     const onArchive = vi.fn()
     const onClose = vi.fn()
     render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={onClose} onArchive={onArchive} onRestore={() => {}} />)
-
     fireEvent.click(screen.getByRole("button", { name: /^archive$/i }))
     fireEvent.click(screen.getByRole("button", { name: /yes, archive/i }))
-
     await waitFor(() => {
       expect(onArchive).toHaveBeenCalledWith(42)
       expect(onClose).toHaveBeenCalled()
     })
   })
 
-  it("calls onClose when the footer Close button is clicked", () => {
-    const onClose = vi.fn()
-    render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={onClose} onArchive={() => {}} onRestore={() => {}} />)
-    // Two close controls exist: × (aria-label) and footer "Close" button — target the footer one by text
-    const closeButtons = screen.getAllByRole("button", { name: /close/i })
-    fireEvent.click(closeButtons[closeButtons.length - 1])
-    expect(onClose).toHaveBeenCalled()
+  it("shows the Save button", () => {
+    render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
+    expect(screen.getByRole("button", { name: /^save$/i })).toBeInTheDocument()
   })
 
   it("calls onClose when Escape is pressed", () => {
@@ -83,7 +95,20 @@ describe("CardModal — active card", () => {
 })
 
 describe("CardModal — archived card (readOnly)", () => {
-  it("shows the read-only badge", () => {
+  it("renders title as a disabled input", () => {
+    render(<CardModal card={archivedCard} projectId="1" readOnly={true} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
+    const titleInput = screen.getByDisplayValue("Old task")
+    expect(titleInput).toBeDisabled()
+  })
+
+  it("renders description as a disabled textarea", () => {
+    render(<CardModal card={archivedCard} projectId="1" readOnly={true} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
+    const textarea = screen.getByPlaceholderText(/add a description/i)
+    expect(textarea).toBeDisabled()
+    expect(textarea.value).toBe("Done long ago")
+  })
+
+  it("shows the archived read-only badge", () => {
     render(<CardModal card={archivedCard} projectId="1" readOnly={true} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
     expect(screen.getByText(/archived.*read only/i)).toBeInTheDocument()
   })
@@ -93,9 +118,10 @@ describe("CardModal — archived card (readOnly)", () => {
     expect(screen.getByRole("button", { name: /restore card/i })).toBeInTheDocument()
   })
 
-  it("does not show the Archive button for archived cards", () => {
+  it("does not show Archive or Save for archived cards", () => {
     render(<CardModal card={archivedCard} projectId="1" readOnly={true} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)
     expect(screen.queryByRole("button", { name: /^archive$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /save/i })).not.toBeInTheDocument()
   })
 
   it("calls onRestore and onClose after clicking Restore", async () => {
@@ -103,9 +129,7 @@ describe("CardModal — archived card (readOnly)", () => {
     const onRestore = vi.fn()
     const onClose = vi.fn()
     render(<CardModal card={archivedCard} projectId="1" readOnly={true} onClose={onClose} onArchive={() => {}} onRestore={onRestore} />)
-
     fireEvent.click(screen.getByRole("button", { name: /restore card/i }))
-
     await waitFor(() => {
       expect(onRestore).toHaveBeenCalledWith(7)
       expect(onClose).toHaveBeenCalled()
