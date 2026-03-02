@@ -1,1 +1,7 @@
-<div id="kanban-board-root" data-project-id="<%= @project.id %>"></div>
+<% content_for :head do %>
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+  </style>
+<% end %>
+
+<div id="kanban-board-root" data-project-id="<%= @project.id %>" style="height: 100%;"></div>
