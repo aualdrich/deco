@@ -263,7 +263,7 @@ export default function KanbanBoard({ projectId, projectName }) {
         statusFilter={statusFilter}
         onFilterChange={setStatusFilter}
       />
-      <div className="p-4 md:p-6">
+      <div className="px-4 pb-4 pt-14 md:px-6 md:pb-6 md:pt-14">
         <div className="flex flex-row gap-4 overflow-x-auto pb-4">
           {columns.map((col) => (
             <SortableContext
