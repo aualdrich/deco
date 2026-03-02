@@ -200,7 +200,7 @@ export default function KanbanBoard({ projectId }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-deco-bg">
+      <div className="h-full flex items-center justify-center bg-deco-bg">
         <p
           className="text-deco-muted text-sm uppercase tracking-widest"
           style={{ fontFamily: "Playfair Display, serif" }}
@@ -219,7 +219,7 @@ export default function KanbanBoard({ projectId }) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="h-screen flex flex-col overflow-hidden bg-deco-bg p-4 md:p-6">
+      <div className="h-full flex flex-col overflow-hidden bg-deco-bg p-4 md:p-6">
         <div className="flex flex-row gap-4 overflow-x-auto flex-1 min-h-0 pb-2">
           {columns.map((col) => (
             <SortableContext
