@@ -89,41 +89,61 @@ export default function KanbanBoard({ projectId }) {
     if (!over) return
 
     const activeCardId = active.id
-    const overCardId = over.id
+    const overId = over.id
 
-    if (activeCardId === overCardId) return
+    if (activeCardId === overId) return
 
     const sourceColIndex = findColumnIndexByCardId(columns, activeCardId)
-    const destColIndex = findColumnIndexByCardId(columns, overCardId)
-
-    if (sourceColIndex === -1 || destColIndex === -1) return
+    if (sourceColIndex === -1) return
 
     const sourceCol = columns[sourceColIndex]
-    const destCol = columns[destColIndex]
-
     const activeIndex = sourceCol.cards.findIndex((c) => c.id === activeCardId)
-    const overIndex = destCol.cards.findIndex((c) => c.id === overCardId)
-
-    if (activeIndex === -1 || overIndex === -1) return
+    if (activeIndex === -1) return
 
     let nextColumns
 
-    if (sourceColIndex === destColIndex) {
-      const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
-      nextColumns = columns.map((col, idx) =>
-        idx === sourceColIndex ? { ...col, cards: nextCards } : col,
-      )
-    } else {
+    // Dropping onto a column id (string) — move to end of that column
+    if (typeof overId === "string") {
+      const destColIndex = columns.findIndex((col) => col.id === overId)
+      if (destColIndex === -1) return
+      if (sourceColIndex === destColIndex) return
+
+      const destCol = columns[destColIndex]
       const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
       const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
-      const nextDestCards = [...destCol.cards]
-      nextDestCards.splice(overIndex, 0, movingCard)
+      const nextDestCards = [...destCol.cards, movingCard]
 
       nextColumns = columns.map((col, idx) => {
         if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
         if (idx === destColIndex) return { ...col, cards: nextDestCards }
         return col
       })
+    } else {
+      // Dropping onto a card id (number) — reorder within or move between columns
+      const destColIndex = findColumnIndexByCardId(columns, overId)
+      if (destColIndex === -1) return
+
+      const destCol = columns[destColIndex]
+      const overIndex = destCol.cards.findIndex((c) => c.id === overId)
+      if (overIndex === -1) return
+
+      if (sourceColIndex === destColIndex) {
+        const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
+        nextColumns = columns.map((col, idx) =>
+          idx === sourceColIndex ? { ...col, cards: nextCards } : col,
+        )
+      } else {
+        const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
+        const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
+        const nextDestCards = [...destCol.cards]
+        nextDestCards.splice(overIndex, 0, movingCard)
+
+        nextColumns = columns.map((col, idx) => {
+          if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
+          if (idx === destColIndex) return { ...col, cards: nextDestCards }
+          return col
+        })
+      }
     }
 
     // Update local state first (optimistic)
