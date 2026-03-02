@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { DndContext, closestCorners, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
 import {
   SortableContext,
@@ -33,6 +33,7 @@ export default function KanbanBoard({ projectId, projectName }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   )
+  const dragActivated = useRef(false)
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
   const [selectedCard, setSelectedCard] = useState(null)
@@ -62,6 +63,7 @@ export default function KanbanBoard({ projectId, projectName }) {
   }, [projectId, statusFilter])
 
   function handleDragStart(event) {
+    dragActivated.current = true
     const { active } = event
     for (const col of columns) {
       const found = col.cards.find((c) => c.id === active.id)
@@ -74,6 +76,8 @@ export default function KanbanBoard({ projectId, projectName }) {
 
   function handleDragEnd(event) {
     setActiveCard(null)
+    // Clear drag flag after a brief window so onClick doesn't open modal post-drag
+    setTimeout(() => { dragActivated.current = false }, 100)
 
     const { active, over } = event
     if (!over) return
@@ -138,6 +142,7 @@ export default function KanbanBoard({ projectId, projectName }) {
   }
 
   function handleCardClick(card) {
+    if (dragActivated.current) return
     setSelectedCard(card)
   }
 
