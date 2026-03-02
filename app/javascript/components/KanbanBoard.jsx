@@ -36,6 +36,15 @@ export default function KanbanBoard({ projectId }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    document.documentElement.style.overscrollBehavior = "none"
+    document.body.style.overscrollBehavior = "none"
+    return () => {
+      document.documentElement.style.overscrollBehavior = ""
+      document.body.style.overscrollBehavior = ""
+    }
+  }, [])
+
+  useEffect(() => {
     if (!projectId) return
     fetch(`/projects/${projectId}/cards`)
       .then((res) => res.json())
