@@ -40,7 +40,7 @@ function findColumnIndexByCardId(columns, cardId) {
 export default function KanbanBoard({ projectId }) {
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
   )
 
   const [columns, setColumns] = useState(buildColumns([]))
