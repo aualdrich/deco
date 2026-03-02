@@ -122,13 +122,13 @@ export default function KanbanBoard({ projectId }) {
   }
 
   function handleCardUpdated(updatedCard) {
-    setColumns((prev) =>
-      prev.map((col) => ({
-        ...col,
-        cards: col.cards.map((c) => (c.id === updatedCard.id ? updatedCard : c)),
-      }))
-    )
-    setSelectedCard(updatedCard)
+    setColumns((prev) => {
+      const allCards = prev
+        .flatMap((col) => col.cards)
+        .map((c) => (c.id === updatedCard.id ? updatedCard : c))
+      return buildColumns(allCards)
+    })
+    setSelectedCard(null)
   }
 
   async function handleAddCard(columnId, title, description) {
