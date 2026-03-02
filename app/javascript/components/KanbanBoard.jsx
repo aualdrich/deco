@@ -219,8 +219,8 @@ export default function KanbanBoard({ projectId }) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen p-4 md:p-6 bg-deco-bg">
-        <div className="flex flex-row gap-4 overflow-x-auto pb-4">
+      <div className="h-screen flex flex-col overflow-hidden bg-deco-bg p-4 md:p-6">
+        <div className="flex flex-row gap-4 overflow-x-auto flex-1 min-h-0 pb-2">
           {columns.map((col) => (
             <SortableContext
               key={col.id}
