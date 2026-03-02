@@ -1,110 +1,120 @@
 import React from "react"
-import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, within, act } from "@testing-library/react"
-
-// Capture the handlers passed to DndContext so we can invoke them directly.
-let lastOnDragStart
-let lastOnDragEnd
-
-vi.mock("@dnd-kit/core", async () => {
-  const React = (await import("react")).default
-
-  return {
-    // DndContext is a simple wrapper that stores handlers for tests.
-    DndContext: ({ children, onDragStart, onDragEnd }) => {
-      lastOnDragStart = onDragStart
-      lastOnDragEnd = onDragEnd
-      return React.createElement(React.Fragment, null, children)
-    },
-    DragOverlay: ({ children }) =>
-      React.createElement(React.Fragment, null, children),
-    closestCorners: vi.fn(),
-  }
-})
-
-vi.mock("@dnd-kit/sortable", async () => {
-  const React = (await import("react")).default
-
-  return {
-    SortableContext: ({ children }) =>
-      React.createElement(React.Fragment, null, children),
-    arrayMove: (array, from, to) => {
-      const copy = array.slice()
-      const [item] = copy.splice(from, 1)
-      copy.splice(to, 0, item)
-      return copy
-    },
-    verticalListSortingStrategy: vi.fn(),
-    useSortable: () => ({
-      attributes: {},
-      listeners: {},
-      setNodeRef: () => {},
-      transform: null,
-      transition: null,
-      isDragging: false,
-    }),
-  }
-})
-
-vi.mock("@dnd-kit/utilities", () => {
-  return {
-    CSS: {
-      Transform: {
-        toString: () => "",
-      },
-    },
-  }
-})
+import { describe, it, expect, vi, afterEach } from "vitest"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 
 import KanbanBoard from "../KanbanBoard"
 
-function columnContainerByHeader(headerText) {
-  const header = screen.getByText(headerText)
-  const container = header.closest("div")
-  if (!container) throw new Error(`Could not find container for ${headerText}`)
-  return container
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
+
+function mockFetchJson(data, { ok = true } = {}) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok,
+      json: async () => data,
+    }))
+  )
 }
 
+const COLUMN_TITLES = ["Todo", "Doing", "In Review", "In QA", "In Preview", "Done"]
+
 describe("KanbanBoard", () => {
-  beforeEach(() => {
-    lastOnDragStart = undefined
-    lastOnDragEnd = undefined
+  it("renders all 6 column headers when the board is empty", async () => {
+    mockFetchJson([])
+
+    render(<KanbanBoard projectId="1" />)
+
+    for (const title of COLUMN_TITLES) {
+      expect(await screen.findByText(title)).toBeInTheDocument()
+    }
   })
 
-  it("renders all six column headers", () => {
-    render(<KanbanBoard />)
+  it("shows fetched cards in the correct columns", async () => {
+    mockFetchJson([
+      { id: 1, title: "First task",  description: "desc",  status: "todo",  position: 0 },
+      { id: 2, title: "Active work", description: "",      status: "doing", position: 0 },
+    ])
 
-    expect(screen.getByText("Todo")).toBeInTheDocument()
-    expect(screen.getByText("Doing")).toBeInTheDocument()
-    expect(screen.getByText("In Review")).toBeInTheDocument()
-    expect(screen.getByText("In QA")).toBeInTheDocument()
-    expect(screen.getByText("In Preview")).toBeInTheDocument()
-    expect(screen.getByText("Done")).toBeInTheDocument()
+    render(<KanbanBoard projectId="1" />)
+
+    expect(await screen.findByText("First task")).toBeInTheDocument()
+    expect(screen.getByText("Active work")).toBeInTheDocument()
   })
 
-  it("moves a card between columns on drag end", async () => {
-    render(<KanbanBoard />)
+  it("shows an Add card affordance in each column", async () => {
+    mockFetchJson([])
 
-    // Sanity check: card-1 starts in Todo.
-    const todoCol = columnContainerByHeader("Todo")
-    expect(within(todoCol).getByText("Design system tokens")).toBeInTheDocument()
+    render(<KanbanBoard projectId="1" />)
 
-    const doingCol = columnContainerByHeader("Doing")
-    expect(within(doingCol).queryByText("Design system tokens")).toBeNull()
+    // Wait for board to load (loading state disappears)
+    await screen.findByText("Todo")
 
-    // Invoke DndContext's onDragEnd with a mock event that indicates
-    // card-1 was dragged over card-3 (which lives in the Doing column).
-    expect(typeof lastOnDragEnd).toBe("function")
+    const addButtons = screen.getAllByText("+ Add card")
+    expect(addButtons).toHaveLength(COLUMN_TITLES.length)
+  })
 
-    await act(async () => {
-      lastOnDragEnd({
-        active: { id: "card-1" },
-        over: { id: "card-3" },
-      })
+  it("reveals the inline form when + Add card is clicked", async () => {
+    mockFetchJson([])
+
+    render(<KanbanBoard projectId="1" />)
+
+    await screen.findByText("Todo")
+
+    const [firstAddButton] = screen.getAllByText("+ Add card")
+    fireEvent.click(firstAddButton)
+
+    expect(screen.getByPlaceholderText("Card title")).toBeInTheDocument()
+    expect(screen.getByPlaceholderText("Description (optional)")).toBeInTheDocument()
+  })
+
+  it("submitting the form POSTs to the API and adds the card to the column", async () => {
+    const newCard = { id: 99, title: "Brand new card", description: "", status: "todo", position: 0 }
+
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [] })       // initial GET
+      .mockResolvedValueOnce({ ok: true, json: async () => newCard })  // POST
+
+    vi.stubGlobal("fetch", fetchMock)
+
+    render(<KanbanBoard projectId="1" />)
+
+    await screen.findByText("Todo")
+
+    const [firstAddButton] = screen.getAllByText("+ Add card")
+    fireEvent.click(firstAddButton)
+
+    const titleInput = screen.getByPlaceholderText("Card title")
+    fireEvent.change(titleInput, { target: { value: "Brand new card" } })
+
+    const addBtn = screen.getByRole("button", { name: /^add$/i })
+    fireEvent.click(addBtn)
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/projects/1/cards",
+        expect.objectContaining({ method: "POST" })
+      )
     })
 
-    // After moving, card title should now be in Doing and removed from Todo.
-    expect(within(columnContainerByHeader("Doing")).getByText("Design system tokens")).toBeInTheDocument()
-    expect(within(columnContainerByHeader("Todo")).queryByText("Design system tokens")).toBeNull()
+    expect(await screen.findByText("Brand new card")).toBeInTheDocument()
+  })
+
+  it("pressing Escape closes the inline form without submitting", async () => {
+    mockFetchJson([])
+
+    render(<KanbanBoard projectId="1" />)
+
+    await screen.findByText("Todo")
+
+    const [firstAddButton] = screen.getAllByText("+ Add card")
+    fireEvent.click(firstAddButton)
+
+    const titleInput = screen.getByPlaceholderText("Card title")
+    fireEvent.keyDown(titleInput, { key: "Escape" })
+
+    expect(screen.queryByPlaceholderText("Card title")).not.toBeInTheDocument()
   })
 })
