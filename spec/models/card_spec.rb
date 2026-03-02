@@ -50,4 +50,53 @@ RSpec.describe Card, type: :model do
       expect(card.position).to eq(0)
     end
   end
+describe 'scopes' do
+  let!(:active_card)   { project.cards.create!(title: 'Active Card') }
+  let!(:archived_card) { project.cards.create!(title: 'Archived Card', archived: true, archived_at: 1.hour.ago) }
+
+  describe '.active' do
+    it 'returns only non-archived cards' do
+      expect(Card.active).to include(active_card)
+      expect(Card.active).not_to include(archived_card)
+    end
+  end
+
+  describe '.archived' do
+    it 'returns only archived cards' do
+      expect(Card.archived).to include(archived_card)
+      expect(Card.archived).not_to include(active_card)
+    end
+  end
+end
+
+describe '#archive!' do
+  let(:card) { project.cards.create!(title: 'To Archive') }
+
+  it 'sets archived to true' do
+    card.archive!
+    expect(card.reload.archived).to be true
+  end
+
+  it 'sets archived_at to the current time' do
+    freeze_time = Time.current
+    allow(Time).to receive(:current).and_return(freeze_time)
+    card.archive!
+    expect(card.reload.archived_at).to be_within(2.seconds).of(freeze_time)
+  end
+end
+
+describe '#restore!' do
+  let(:card) { project.cards.create!(title: 'To Restore', archived: true, archived_at: 1.hour.ago) }
+
+  it 'sets archived to false' do
+    card.restore!
+    expect(card.reload.archived).to be false
+  end
+
+  it 'clears archived_at' do
+    card.restore!
+    expect(card.reload.archived_at).to be_nil
+  end
+end
+
 end

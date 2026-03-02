@@ -13,3 +13,14 @@
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap');
+
+html, body {
+  background-color: var(--color-deco-bg);
+}
+
+/* Nudge the board top bar down to clear the iPhone notch / Dynamic Island.
+   Using padding-top on the bar itself keeps safe-area handling scoped and
+   avoids the iOS Safari bug where overflow-x: hidden on body kills touch events. */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}

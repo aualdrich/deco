@@ -19,5 +19,6 @@ if (rootContainer) {
 const kanbanContainer = document.getElementById("kanban-board-root")
 if (kanbanContainer) {
   const projectId = kanbanContainer.dataset.projectId
-  createRoot(kanbanContainer).render(<KanbanBoard projectId={projectId} />)
+  const projectName = kanbanContainer.dataset.projectName
+  createRoot(kanbanContainer).render(<KanbanBoard projectId={projectId} projectName={projectName} />)
 }

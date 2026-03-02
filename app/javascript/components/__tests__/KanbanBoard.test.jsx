@@ -56,7 +56,7 @@ describe("KanbanBoard", () => {
     expect(addButtons).toHaveLength(COLUMN_TITLES.length)
   })
 
-  it("reveals the inline form when + Add card is clicked", async () => {
+  it("opens the CardModal when + Add card is clicked", async () => {
     mockFetchJson([])
 
     render(<KanbanBoard projectId="1" />)
@@ -66,11 +66,12 @@ describe("KanbanBoard", () => {
     const [firstAddButton] = screen.getAllByText("+ Add card")
     fireEvent.click(firstAddButton)
 
-    expect(screen.getByPlaceholderText("Card title")).toBeInTheDocument()
-    expect(screen.getByPlaceholderText("Description (optional)")).toBeInTheDocument()
+    expect(screen.getByText("New Card")).toBeInTheDocument()
+    // Modal footer button has exact text "Add card" (not "+ Add card")
+    expect(screen.getByRole("button", { name: /^add card$/i })).toBeInTheDocument()
   })
 
-  it("submitting the form POSTs to the API and adds the card to the column", async () => {
+  it("submitting the modal POSTs to the API and adds the card to the column", async () => {
     const newCard = { id: 99, title: "Brand new card", description: "", status: "todo", position: 0 }
 
     const fetchMock = vi.fn()
@@ -86,11 +87,10 @@ describe("KanbanBoard", () => {
     const [firstAddButton] = screen.getAllByText("+ Add card")
     fireEvent.click(firstAddButton)
 
-    const titleInput = screen.getByPlaceholderText("Card title")
+    const titleInput = screen.getAllByRole("textbox")[0]
     fireEvent.change(titleInput, { target: { value: "Brand new card" } })
 
-    const addBtn = screen.getByRole("button", { name: /^add$/i })
-    fireEvent.click(addBtn)
+    fireEvent.click(screen.getByRole("button", { name: /^add card$/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -102,7 +102,7 @@ describe("KanbanBoard", () => {
     expect(await screen.findByText("Brand new card")).toBeInTheDocument()
   })
 
-  it("pressing Escape closes the inline form without submitting", async () => {
+  it("pressing Escape closes the add card modal", async () => {
     mockFetchJson([])
 
     render(<KanbanBoard projectId="1" />)
@@ -112,9 +112,10 @@ describe("KanbanBoard", () => {
     const [firstAddButton] = screen.getAllByText("+ Add card")
     fireEvent.click(firstAddButton)
 
-    const titleInput = screen.getByPlaceholderText("Card title")
-    fireEvent.keyDown(titleInput, { key: "Escape" })
+    expect(screen.getByText("New Card")).toBeInTheDocument()
 
-    expect(screen.queryByPlaceholderText("Card title")).not.toBeInTheDocument()
+    fireEvent.keyDown(window, { key: "Escape" })
+
+    expect(screen.queryByText("New Card")).not.toBeInTheDocument()
   })
 })

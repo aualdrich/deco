@@ -1,9 +1,13 @@
 class CardsController < ApplicationController
   before_action :set_project
-  before_action :set_card, only: [:update]
+  before_action :set_card, only: [:update, :archive, :restore]
 
   def index
-    @cards = @project.cards
+    if params[:status] == "archived"
+      @cards = @project.cards.archived
+    else
+      @cards = @project.cards.active
+    end
     render json: @cards
   end
 
@@ -22,6 +26,17 @@ class CardsController < ApplicationController
     else
       render json: { errors: @card.errors.full_messages }, status: :unprocessable_entity
     end
+  end
+
+  def archive
+    @card.archive!
+    render json: @card
+  end
+
+  def restore
+    @card.restore!
+    @card.update!(status: "todo")
+    render json: @card
   end
 
   private

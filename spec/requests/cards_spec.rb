@@ -62,4 +62,48 @@ RSpec.describe 'Cards', type: :request do
       expect(body['position']).to eq(2)
     end
   end
+describe 'GET /projects/:project_id/cards with ?status filter' do
+  let!(:active_card)   { project.cards.create!(title: 'Active Card', status: 'todo') }
+  let!(:archived_card) { project.cards.create!(title: 'Archived Card', status: 'todo', archived: true, archived_at: 1.hour.ago) }
+
+  it 'returns only active cards by default' do
+    get "/projects/#{project.id}/cards", as: :json
+    body = JSON.parse(response.body)
+    titles = body.map { |c| c['title'] }
+    expect(titles).to include('Active Card')
+    expect(titles).not_to include('Archived Card')
+  end
+
+  it 'returns only archived cards when ?status=archived' do
+    get "/projects/#{project.id}/cards?status=archived", as: :json
+    body = JSON.parse(response.body)
+    titles = body.map { |c| c['title'] }
+    expect(titles).to include('Archived Card')
+    expect(titles).not_to include('Active Card')
+  end
+end
+
+describe 'PATCH /projects/:project_id/cards/:id/archive' do
+  let(:card) { project.cards.create!(title: 'Card to Archive', status: 'todo') }
+
+  it 'archives the card and returns 200' do
+    patch "/projects/#{project.id}/cards/#{card.id}/archive", as: :json
+    expect(response).to have_http_status(:ok)
+    expect(card.reload.archived).to be true
+    expect(card.reload.archived_at).not_to be_nil
+  end
+end
+
+describe 'PATCH /projects/:project_id/cards/:id/restore' do
+  let(:card) { project.cards.create!(title: 'Card to Restore', status: 'doing', archived: true, archived_at: 1.hour.ago) }
+
+  it 'restores the card to the todo column and returns 200' do
+    patch "/projects/#{project.id}/cards/#{card.id}/restore", as: :json
+    expect(response).to have_http_status(:ok)
+    expect(card.reload.archived).to be false
+    expect(card.reload.archived_at).to be_nil
+    expect(card.reload.status).to eq('todo')
+  end
+end
+
 end

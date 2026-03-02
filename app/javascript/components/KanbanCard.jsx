@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
-export default function KanbanCard({ card }) {
+export default function KanbanCard({ card, onCardClick }) {
   const {
     attributes,
     listeners,
@@ -35,10 +35,12 @@ export default function KanbanCard({ card }) {
       style={{
         ...style,
         borderLeft: "3px solid var(--color-deco-gold)",
+        touchAction: "none",
       }}
       {...attributes}
       {...listeners}
-      className="rounded p-3 cursor-grab active:cursor-grabbing bg-deco-raised border border-deco-border"
+      onClick={() => onCardClick?.(card)}
+      className="rounded p-3 cursor-grab active:cursor-grabbing bg-deco-raised border border-deco-border select-none"
     >
       <p className="font-semibold text-sm text-deco-text">{card.title}</p>
       <p className="text-xs mt-1 text-deco-muted">{card.description}</p>
