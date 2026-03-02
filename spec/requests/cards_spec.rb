@@ -11,15 +11,18 @@ RSpec.describe 'Cards', type: :request do
       expect(JSON.parse(response.body)).to eq([])
     end
 
-    it 'returns all cards for the project as JSON' do
-      project.cards.create!(title: 'Card A', status: 'todo', position: 0)
+    it 'returns all cards for the project as JSON, each with a steps array' do
+      card_a = project.cards.create!(title: 'Card A', status: 'todo', position: 0)
       project.cards.create!(title: 'Card B', status: 'doing', position: 1)
+      card_a.steps.create!(title: 'Step one')
 
       get "/projects/#{project.id}/cards", as: :json
 
       expect(response).to have_http_status(:ok)
       body = JSON.parse(response.body)
       expect(body.map { |c| c['title'] }).to include('Card A', 'Card B')
+      expect(body.first['steps']).to be_an(Array)
+      expect(body.first['steps'].first['title']).to eq('Step one')
     end
   end
 
