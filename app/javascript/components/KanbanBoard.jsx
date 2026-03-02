@@ -257,13 +257,13 @@ export default function KanbanBoard({ projectId, projectName }) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="h-screen min-h-screen bg-deco-bg flex flex-col overflow-hidden">
+      <div className="h-screen bg-deco-bg flex flex-col w-full">
         <BoardTopBar
           projectName={projectName}
           statusFilter={statusFilter}
           onFilterChange={setStatusFilter}
         />
-        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-4 md:p-6">
             <div className="flex flex-row gap-4 overflow-x-auto pb-4">
               {columns.map((col) => (
