@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-export default function CardModal({ card, projectId, readOnly, onClose, onArchive, onRestore, onCreate }) {
+export default function CardModal({ card, projectId, readOnly, onClose, onArchive, onRestore, onCreate, onUpdate }) {
   const isCreate = !card
   const [title, setTitle] = useState(card?.title || "")
   const [description, setDescription] = useState(card?.description || "")
@@ -50,6 +50,8 @@ export default function CardModal({ card, projectId, readOnly, onClose, onArchiv
         body: JSON.stringify({ card: { title: title.trim(), description: description.trim() } }),
       })
       if (!res.ok) throw new Error("Save failed")
+      const updatedCard = await res.json()
+      onUpdate?.(updatedCard)
       onClose()
     } catch (err) {
       console.error(err)

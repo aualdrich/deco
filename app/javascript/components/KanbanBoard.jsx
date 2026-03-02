@@ -141,6 +141,15 @@ export default function KanbanBoard({ projectId, projectName }) {
     setSelectedCard(card)
   }
 
+  function handleUpdateCard(updatedCard) {
+    setColumns((prev) =>
+      prev.map((col) => ({
+        ...col,
+        cards: col.cards.map((c) => (c.id === updatedCard.id ? updatedCard : c)),
+      }))
+    )
+  }
+
   function handleArchiveCard(cardId) {
     setColumns((prev) =>
       prev.map((col) => ({ ...col, cards: col.cards.filter((c) => c.id !== cardId) }))
@@ -199,6 +208,7 @@ export default function KanbanBoard({ projectId, projectName }) {
         projectId={projectId}
         readOnly={statusFilter === "archived"}
         onClose={() => setSelectedCard(null)}
+        onUpdate={handleUpdateCard}
         onArchive={handleArchiveCard}
         onRestore={handleRestoreCard}
       />
