@@ -6,6 +6,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import KanbanColumn from "./KanbanColumn"
+import CardEditModal from "./CardEditModal"
 import csrfToken from "../lib/csrf"
 
 const COLUMN_DEFINITIONS = [
@@ -120,6 +121,16 @@ export default function KanbanBoard({ projectId }) {
     }).catch((err) => console.error("Failed to persist card move:", err))
   }
 
+  function handleCardUpdated(updatedCard) {
+    setColumns((prev) =>
+      prev.map((col) => ({
+        ...col,
+        cards: col.cards.map((c) => (c.id === updatedCard.id ? updatedCard : c)),
+      }))
+    )
+    setSelectedCard(updatedCard)
+  }
+
   async function handleAddCard(columnId, title, description) {
     const col = columns.find((c) => c.id === columnId)
     const position = col ? col.cards.length : 0
@@ -159,6 +170,7 @@ export default function KanbanBoard({ projectId }) {
   }
 
   return (
+    <>
     <DndContext
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
@@ -195,5 +207,15 @@ export default function KanbanBoard({ projectId }) {
         ) : null}
       </DragOverlay>
     </DndContext>
+
+    {selectedCard && (
+      <CardEditModal
+        card={selectedCard}
+        projectId={projectId}
+        onClose={() => setSelectedCard(null)}
+        onCardUpdated={handleCardUpdated}
+      />
+    )}
+    </>
   )
 }
