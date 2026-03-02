@@ -1,6 +1,9 @@
+import { useDroppable } from "@dnd-kit/core"
 import KanbanCard from "./KanbanCard"
 
 export default function KanbanColumn({ column, onOpenAddCard, onCardClick }) {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id })
+
   return (
     <div className="min-w-[280px] w-[280px] md:flex-1 md:min-w-0 rounded-lg p-3 flex flex-col gap-2 bg-deco-surface border border-deco-gold">
       <h2
@@ -10,7 +13,12 @@ export default function KanbanColumn({ column, onOpenAddCard, onCardClick }) {
         {column.title}
       </h2>
 
-      <div className="flex flex-col gap-2">
+      {/* Droppable card list — fills available space so the whole column body is a drop target */}
+      <div
+        ref={setNodeRef}
+        className="flex flex-col gap-2 flex-1 min-h-[60px] rounded transition-colors"
+        style={isOver ? { backgroundColor: "rgba(201,168,76,0.06)" } : undefined}
+      >
         {column.cards.map((card) => (
           <KanbanCard key={card.id} card={card} onCardClick={onCardClick} />
         ))}

@@ -83,41 +83,60 @@ export default function KanbanBoard({ projectId, projectName }) {
     if (!over) return
 
     const activeCardId = active.id
-    const overCardId = over.id
-
-    if (activeCardId === overCardId) return
+    const overId = over.id
 
     const sourceColIndex = findColumnIndexByCardId(columns, activeCardId)
-    const destColIndex = findColumnIndexByCardId(columns, overCardId)
-
-    if (sourceColIndex === -1 || destColIndex === -1) return
+    if (sourceColIndex === -1) return
 
     const sourceCol = columns[sourceColIndex]
-    const destCol = columns[destColIndex]
-
     const activeIndex = sourceCol.cards.findIndex((c) => c.id === activeCardId)
-    const overIndex = destCol.cards.findIndex((c) => c.id === overCardId)
+    if (activeIndex === -1) return
 
-    if (activeIndex === -1 || overIndex === -1) return
+    // Determine if dropping onto a card or directly onto a column droppable
+    const overIsColumn = COLUMN_DEFINITIONS.some((col) => col.id === overId)
+    const destColIndex = overIsColumn
+      ? columns.findIndex((col) => col.id === overId)
+      : findColumnIndexByCardId(columns, overId)
+
+    if (destColIndex === -1) return
+
+    const destCol = columns[destColIndex]
 
     let nextColumns
 
-    if (sourceColIndex === destColIndex) {
-      const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
-      nextColumns = columns.map((col, idx) =>
-        idx === sourceColIndex ? { ...col, cards: nextCards } : col,
-      )
-    } else {
+    if (overIsColumn) {
+      // Dropped onto column body — append to end of destination
+      if (sourceColIndex === destColIndex) return // same column, no-op
       const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
       const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
-      const nextDestCards = [...destCol.cards]
-      nextDestCards.splice(overIndex, 0, movingCard)
-
+      const nextDestCards = [...destCol.cards, movingCard]
       nextColumns = columns.map((col, idx) => {
         if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
         if (idx === destColIndex) return { ...col, cards: nextDestCards }
         return col
       })
+    } else {
+      // Dropped onto a card
+      if (activeCardId === overId) return
+      const overIndex = destCol.cards.findIndex((c) => c.id === overId)
+      if (overIndex === -1) return
+
+      if (sourceColIndex === destColIndex) {
+        const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
+        nextColumns = columns.map((col, idx) =>
+          idx === sourceColIndex ? { ...col, cards: nextCards } : col,
+        )
+      } else {
+        const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
+        const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
+        const nextDestCards = [...destCol.cards]
+        nextDestCards.splice(overIndex, 0, movingCard)
+        nextColumns = columns.map((col, idx) => {
+          if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
+          if (idx === destColIndex) return { ...col, cards: nextDestCards }
+          return col
+        })
+      }
     }
 
     // Update local state first (optimistic)
