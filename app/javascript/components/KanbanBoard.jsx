@@ -67,84 +67,81 @@ export default function KanbanBoard({ projectId, projectName }) {
     const { active } = event
     for (const col of columns) {
       const found = col.cards.find((c) => c.id === active.id)
-      if (found) {
-        setActiveCard(found)
-        break
-      }
+      if (found) { setActiveCard(found); break }
     }
+  }
+
+  // Cross-column moves happen here, live as you drag.
+  // Within-column reordering is handled automatically by SortableContext.
+  function handleDragOver(event) {
+    const { active, over } = event
+    if (!over) return
+
+    const activeCardId = active.id
+    const overId = over.id
+    if (activeCardId === overId) return
+
+    const sourceColIndex = findColumnIndexByCardId(columns, activeCardId)
+    const destColIndex = findColumnIndexByCardId(columns, overId)
+
+    // Both must exist, and must be different columns
+    if (sourceColIndex === -1 || destColIndex === -1) return
+    if (sourceColIndex === destColIndex) return
+
+    setColumns((prev) => {
+      const sourceCol = prev[sourceColIndex]
+      const destCol = prev[destColIndex]
+      const activeIndex = sourceCol.cards.findIndex((c) => c.id === activeCardId)
+      const overIndex = destCol.cards.findIndex((c) => c.id === overId)
+      if (activeIndex === -1) return prev
+
+      const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
+      const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
+      const nextDestCards = [...destCol.cards]
+      const insertAt = overIndex >= 0 ? overIndex : nextDestCards.length
+      nextDestCards.splice(insertAt, 0, movingCard)
+
+      return prev.map((col, idx) => {
+        if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
+        if (idx === destColIndex) return { ...col, cards: nextDestCards }
+        return col
+      })
+    })
   }
 
   function handleDragEnd(event) {
     setActiveCard(null)
-    // Clear drag flag after a brief window so onClick doesn't open modal post-drag
     setTimeout(() => { dragActivated.current = false }, 100)
 
     const { active, over } = event
     if (!over) return
 
     const activeCardId = active.id
-    const overId = over.id
 
+    // Within-column reorder (cross-column was already handled in onDragOver)
     const sourceColIndex = findColumnIndexByCardId(columns, activeCardId)
     if (sourceColIndex === -1) return
 
     const sourceCol = columns[sourceColIndex]
     const activeIndex = sourceCol.cards.findIndex((c) => c.id === activeCardId)
-    if (activeIndex === -1) return
+    const overIndex = sourceCol.cards.findIndex((c) => c.id === over.id)
 
-    // Determine if dropping onto a card or directly onto a column droppable
-    const overIsColumn = COLUMN_DEFINITIONS.some((col) => col.id === overId)
-    const destColIndex = overIsColumn
-      ? columns.findIndex((col) => col.id === overId)
-      : findColumnIndexByCardId(columns, overId)
+    let finalColumns = columns
 
-    if (destColIndex === -1) return
-
-    const destCol = columns[destColIndex]
-
-    let nextColumns
-
-    if (overIsColumn) {
-      // Dropped onto column body — append to end of destination
-      if (sourceColIndex === destColIndex) return // same column, no-op
-      const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
-      const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
-      const nextDestCards = [...destCol.cards, movingCard]
-      nextColumns = columns.map((col, idx) => {
-        if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
-        if (idx === destColIndex) return { ...col, cards: nextDestCards }
-        return col
-      })
-    } else {
-      // Dropped onto a card
-      if (activeCardId === overId) return
-      const overIndex = destCol.cards.findIndex((c) => c.id === overId)
-      if (overIndex === -1) return
-
-      if (sourceColIndex === destColIndex) {
-        const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
-        nextColumns = columns.map((col, idx) =>
-          idx === sourceColIndex ? { ...col, cards: nextCards } : col,
-        )
-      } else {
-        const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
-        const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
-        const nextDestCards = [...destCol.cards]
-        nextDestCards.splice(overIndex, 0, movingCard)
-        nextColumns = columns.map((col, idx) => {
-          if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
-          if (idx === destColIndex) return { ...col, cards: nextDestCards }
-          return col
-        })
-      }
+    if (over.id !== activeCardId && activeIndex !== -1 && overIndex !== -1) {
+      // Same-column reorder
+      const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
+      finalColumns = columns.map((col, idx) =>
+        idx === sourceColIndex ? { ...col, cards: nextCards } : col
+      )
+      setColumns(finalColumns)
     }
 
-    // Update local state first (optimistic)
-    setColumns(nextColumns)
-
-    // Persist new status + position to DB
-    const newCol = nextColumns[findColumnIndexByCardId(nextColumns, activeCardId)]
-    const newPosition = newCol.cards.findIndex((c) => c.id === activeCardId)
+    // Persist: card's current column + position
+    const currentColIndex = findColumnIndexByCardId(finalColumns, activeCardId)
+    if (currentColIndex === -1) return
+    const currentCol = finalColumns[currentColIndex]
+    const currentPosition = currentCol.cards.findIndex((c) => c.id === activeCardId)
 
     fetch(`/projects/${projectId}/cards/${activeCardId}`, {
       method: "PATCH",
@@ -152,7 +149,7 @@ export default function KanbanBoard({ projectId, projectName }) {
         "Content-Type": "application/json",
         "X-CSRF-Token": csrfToken(),
       },
-      body: JSON.stringify({ card: { status: newCol.id, position: newPosition } }),
+      body: JSON.stringify({ card: { status: currentCol.id, position: currentPosition } }),
     }).catch((err) => console.error("Failed to persist card move:", err))
   }
 
@@ -250,6 +247,7 @@ export default function KanbanBoard({ projectId, projectName }) {
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
       <div className="min-h-screen bg-deco-bg">
