@@ -35,7 +35,7 @@ export default function BoardTopBar({ projectName, statusFilter, onFilterChange 
 
   return (
     <div
-      className="sticky top-0 z-10 w-full flex-shrink-0 flex items-center justify-between px-4 py-3 bg-deco-surface border-b border-deco-border"
+      className="safe-area-top sticky top-0 z-10 w-full flex-shrink-0 flex items-center justify-between px-4 py-3 bg-deco-surface border-b border-deco-border"
       style={{ minHeight: "3rem" }}
     >
       {/* Project name — left */}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { DndContext, closestCorners, pointerWithin, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core"
+import { DndContext, closestCorners, pointerWithin, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core"
 import {
   SortableContext,
   arrayMove,
@@ -43,6 +43,7 @@ export default function KanbanBoard({ projectId, projectName }) {
   const dragActivated = useRef(false)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
   )
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)

@@ -35,6 +35,7 @@ export default function KanbanCard({ card, onCardClick }) {
       style={{
         ...style,
         borderLeft: "3px solid var(--color-deco-gold)",
+        touchAction: "none",
       }}
       {...attributes}
       {...listeners}
