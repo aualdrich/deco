@@ -6,6 +6,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import KanbanColumn from "./KanbanColumn"
+import BoardTopBar from "./BoardTopBar"
 
 const COLUMN_DEFINITIONS = [
   { id: "todo",       title: "Todo" },
@@ -27,14 +28,22 @@ function findColumnIndexByCardId(columns, cardId) {
   return columns.findIndex((col) => col.cards.some((c) => c.id === cardId))
 }
 
-export default function KanbanBoard({ projectId }) {
+export default function KanbanBoard({ projectId, projectName }) {
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get("status") === "archived" ? "archived" : "active"
+  })
 
   useEffect(() => {
     if (!projectId) return
-    fetch(`/projects/${projectId}/cards`)
+    setLoading(true)
+    const url = statusFilter === "archived"
+      ? `/projects/${projectId}/cards?status=archived`
+      : `/projects/${projectId}/cards`
+    fetch(url)
       .then((res) => res.json())
       .then((cards) => {
         setColumns(buildColumns(cards))
@@ -44,7 +53,7 @@ export default function KanbanBoard({ projectId }) {
         console.error("Failed to load cards:", err)
         setLoading(false)
       })
-  }, [projectId])
+  }, [projectId, statusFilter])
 
   function handleDragStart(event) {
     const { active } = event
@@ -166,7 +175,13 @@ export default function KanbanBoard({ projectId }) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen p-4 md:p-6 bg-deco-bg">
+      <div className="min-h-screen bg-deco-bg">
+      <BoardTopBar
+        projectName={projectName}
+        statusFilter={statusFilter}
+        onFilterChange={setStatusFilter}
+      />
+      <div className="p-4 md:p-6">
         <div className="flex flex-row gap-4 overflow-x-auto pb-4">
           {columns.map((col) => (
             <SortableContext
@@ -178,6 +193,8 @@ export default function KanbanBoard({ projectId }) {
             </SortableContext>
           ))}
         </div>
+      </div>
+
       </div>
 
       <DragOverlay>
