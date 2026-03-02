@@ -36,6 +36,7 @@ export default function KanbanBoard({ projectId, projectName }) {
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
   const [selectedCard, setSelectedCard] = useState(null)
+  const [creatingInColumn, setCreatingInColumn] = useState(null)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -202,6 +203,15 @@ export default function KanbanBoard({ projectId, projectName }) {
         onRestore={handleRestoreCard}
       />
     )}
+    {creatingInColumn && (
+      <CardModal
+        card={null}
+        projectId={projectId}
+        readOnly={false}
+        onClose={() => setCreatingInColumn(null)}
+        onCreate={(title, description) => handleAddCard(creatingInColumn, title, description)}
+      />
+    )}
     <DndContext
       sensors={sensors}
       collisionDetection={closestCorners}
@@ -222,7 +232,7 @@ export default function KanbanBoard({ projectId, projectName }) {
               items={col.cards.map((c) => c.id)}
               strategy={verticalListSortingStrategy}
             >
-              <KanbanColumn column={col} onAddCard={handleAddCard} onCardClick={handleCardClick} />
+              <KanbanColumn column={col} onOpenAddCard={(colId) => setCreatingInColumn(colId)} onCardClick={handleCardClick} />
             </SortableContext>
           ))}
         </div>

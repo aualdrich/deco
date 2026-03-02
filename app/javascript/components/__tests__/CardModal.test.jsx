@@ -21,6 +21,54 @@ function mockFetch({ ok = true } = {}) {
   )
 }
 
+describe("CardModal — create mode (card=null)", () => {
+  it("renders with empty title and description fields", () => {
+    render(<CardModal card={null} projectId="1" readOnly={false} onClose={() => {}} onCreate={() => {}} />)
+    const emptyFields = screen.getAllByDisplayValue("")
+    expect(emptyFields).toHaveLength(2) // title input + description textarea
+  })
+
+  it("shows 'New Card' header", () => {
+    render(<CardModal card={null} projectId="1" readOnly={false} onClose={() => {}} onCreate={() => {}} />)
+    expect(screen.getByText("New Card")).toBeInTheDocument()
+  })
+
+  it("shows 'Add card' button", () => {
+    render(<CardModal card={null} projectId="1" readOnly={false} onClose={() => {}} onCreate={() => {}} />)
+    expect(screen.getByRole("button", { name: /add card/i })).toBeInTheDocument()
+  })
+
+  it("Add card button is disabled when title is empty", () => {
+    render(<CardModal card={null} projectId="1" readOnly={false} onClose={() => {}} onCreate={() => {}} />)
+    expect(screen.getByRole("button", { name: /add card/i })).toBeDisabled()
+  })
+
+  it("Add card button enables when title is filled", () => {
+    render(<CardModal card={null} projectId="1" readOnly={false} onClose={() => {}} onCreate={() => {}} />)
+    const inputs = screen.getAllByRole("textbox")
+    fireEvent.change(inputs[0], { target: { value: "My new card" } })
+    expect(screen.getByRole("button", { name: /add card/i })).not.toBeDisabled()
+  })
+
+  it("calls onCreate and onClose when Add card is submitted", async () => {
+    const onCreate = vi.fn(async () => {})
+    const onClose = vi.fn()
+    render(<CardModal card={null} projectId="1" readOnly={false} onClose={onClose} onCreate={onCreate} />)
+    const inputs = screen.getAllByRole("textbox")
+    fireEvent.change(inputs[0], { target: { value: "New card title" } })
+    fireEvent.click(screen.getByRole("button", { name: /add card/i }))
+    await waitFor(() => {
+      expect(onCreate).toHaveBeenCalledWith("New card title", "")
+      expect(onClose).toHaveBeenCalled()
+    })
+  })
+
+  it("does not show Archive button in create mode", () => {
+    render(<CardModal card={null} projectId="1" readOnly={false} onClose={() => {}} onCreate={() => {}} />)
+    expect(screen.queryByRole("button", { name: /archive/i })).not.toBeInTheDocument()
+  })
+})
+
 describe("CardModal — active card", () => {
   it("renders the card title in a text input", () => {
     render(<CardModal card={activeCard} projectId="1" readOnly={false} onClose={() => {}} onArchive={() => {}} onRestore={() => {}} />)

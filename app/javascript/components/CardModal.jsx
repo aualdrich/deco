@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react"
 
-export default function CardModal({ card, projectId, readOnly, onClose, onArchive, onRestore }) {
-  const [title, setTitle] = useState(card.title || "")
-  const [description, setDescription] = useState(card.description || "")
+export default function CardModal({ card, projectId, readOnly, onClose, onArchive, onRestore, onCreate }) {
+  const isCreate = !card
+  const [title, setTitle] = useState(card?.title || "")
+  const [description, setDescription] = useState(card?.description || "")
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const backdropRef = useRef(null)
@@ -21,6 +22,19 @@ export default function CardModal({ card, projectId, readOnly, onClose, onArchiv
 
   function handleBackdropClick(e) {
     if (e.target === backdropRef.current) onClose()
+  }
+
+  async function handleCreate() {
+    if (!title.trim()) return
+    setBusy(true)
+    try {
+      await onCreate(title.trim(), description.trim())
+      onClose()
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function handleSave() {
@@ -99,7 +113,7 @@ export default function CardModal({ card, projectId, readOnly, onClose, onArchiv
             className="text-deco-gold uppercase tracking-widest font-bold text-xs"
             style={{ fontFamily: "Playfair Display, serif" }}
           >
-            {readOnly ? "Archived Card" : "Edit Card"}
+            {isCreate ? "New Card" : readOnly ? "Archived Card" : "Edit Card"}
           </h2>
           <button
             onClick={onClose}
@@ -152,7 +166,18 @@ export default function CardModal({ card, projectId, readOnly, onClose, onArchiv
           className="px-6 py-4 flex justify-between items-center gap-3"
           style={{ borderTop: "1px solid var(--color-deco-border)" }}
         >
-          {readOnly ? (
+          {isCreate ? (
+            <>
+              <span />
+              <button
+                onClick={handleCreate}
+                disabled={busy || !title.trim()}
+                className="px-4 py-2 rounded text-sm uppercase tracking-widest font-semibold bg-deco-gold text-deco-bg hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {busy ? "Adding…" : "Add card"}
+              </button>
+            </>
+          ) : readOnly ? (
             <>
               <span />
               <button
