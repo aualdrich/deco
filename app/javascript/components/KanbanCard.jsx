@@ -39,7 +39,7 @@ export default function KanbanCard({ card, onCardClick }) {
       {...attributes}
       {...listeners}
       onClick={() => onCardClick?.(card)}
-      className="rounded p-3 cursor-grab active:cursor-grabbing bg-deco-raised border border-deco-border"
+      className="rounded p-3 cursor-grab active:cursor-grabbing bg-deco-raised border border-deco-border select-none"
     >
       <p className="font-semibold text-sm text-deco-text">{card.title}</p>
       <p className="text-xs mt-1 text-deco-muted">{card.description}</p>
