@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_02_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_02_000002) do
   create_table "cards", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
@@ -28,5 +28,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_02_000001) do
     t.string "directory"
     t.string "name", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "steps", force: :cascade do |t|
+    t.integer "card_id", null: false
+    t.boolean "completed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["card_id"], name: "index_steps_on_card_id"
   end
 end
