@@ -1,11 +1,21 @@
 import { useState, useEffect } from "react"
-import { DndContext, closestCorners, DragOverlay } from "@dnd-kit/core"
+import {
+  DndContext,
+  closestCorners,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
 import {
   SortableContext,
   arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import KanbanColumn from "./KanbanColumn"
+import CardEditModal from "./CardEditModal"
+import csrfToken from "../lib/csrf"
 
 const COLUMN_DEFINITIONS = [
   { id: "todo",       title: "Todo" },
@@ -28,9 +38,24 @@ function findColumnIndexByCardId(columns, cardId) {
 }
 
 export default function KanbanBoard({ projectId }) {
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
+
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
+  const [selectedCard, setSelectedCard] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    document.documentElement.style.overscrollBehavior = "none"
+    document.body.style.overscrollBehavior = "none"
+    return () => {
+      document.documentElement.style.overscrollBehavior = ""
+      document.body.style.overscrollBehavior = ""
+    }
+  }, [])
 
   useEffect(() => {
     if (!projectId) return
@@ -64,41 +89,61 @@ export default function KanbanBoard({ projectId }) {
     if (!over) return
 
     const activeCardId = active.id
-    const overCardId = over.id
+    const overId = over.id
 
-    if (activeCardId === overCardId) return
+    if (activeCardId === overId) return
 
     const sourceColIndex = findColumnIndexByCardId(columns, activeCardId)
-    const destColIndex = findColumnIndexByCardId(columns, overCardId)
-
-    if (sourceColIndex === -1 || destColIndex === -1) return
+    if (sourceColIndex === -1) return
 
     const sourceCol = columns[sourceColIndex]
-    const destCol = columns[destColIndex]
-
     const activeIndex = sourceCol.cards.findIndex((c) => c.id === activeCardId)
-    const overIndex = destCol.cards.findIndex((c) => c.id === overCardId)
-
-    if (activeIndex === -1 || overIndex === -1) return
+    if (activeIndex === -1) return
 
     let nextColumns
 
-    if (sourceColIndex === destColIndex) {
-      const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
-      nextColumns = columns.map((col, idx) =>
-        idx === sourceColIndex ? { ...col, cards: nextCards } : col,
-      )
-    } else {
+    // Dropping onto a column id (string) — move to end of that column
+    if (typeof overId === "string") {
+      const destColIndex = columns.findIndex((col) => col.id === overId)
+      if (destColIndex === -1) return
+      if (sourceColIndex === destColIndex) return
+
+      const destCol = columns[destColIndex]
       const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
       const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
-      const nextDestCards = [...destCol.cards]
-      nextDestCards.splice(overIndex, 0, movingCard)
+      const nextDestCards = [...destCol.cards, movingCard]
 
       nextColumns = columns.map((col, idx) => {
         if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
         if (idx === destColIndex) return { ...col, cards: nextDestCards }
         return col
       })
+    } else {
+      // Dropping onto a card id (number) — reorder within or move between columns
+      const destColIndex = findColumnIndexByCardId(columns, overId)
+      if (destColIndex === -1) return
+
+      const destCol = columns[destColIndex]
+      const overIndex = destCol.cards.findIndex((c) => c.id === overId)
+      if (overIndex === -1) return
+
+      if (sourceColIndex === destColIndex) {
+        const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
+        nextColumns = columns.map((col, idx) =>
+          idx === sourceColIndex ? { ...col, cards: nextCards } : col,
+        )
+      } else {
+        const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
+        const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
+        const nextDestCards = [...destCol.cards]
+        nextDestCards.splice(overIndex, 0, movingCard)
+
+        nextColumns = columns.map((col, idx) => {
+          if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
+          if (idx === destColIndex) return { ...col, cards: nextDestCards }
+          return col
+        })
+      }
     }
 
     // Update local state first (optimistic)
@@ -118,8 +163,14 @@ export default function KanbanBoard({ projectId }) {
     }).catch((err) => console.error("Failed to persist card move:", err))
   }
 
-  function csrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.content ?? ""
+  function handleCardUpdated(updatedCard) {
+    setColumns((prev) => {
+      const allCards = prev
+        .flatMap((col) => col.cards)
+        .map((c) => (c.id === updatedCard.id ? updatedCard : c))
+      return buildColumns(allCards)
+    })
+    setSelectedCard(null)
   }
 
   async function handleAddCard(columnId, title, description) {
@@ -149,7 +200,7 @@ export default function KanbanBoard({ projectId }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-deco-bg">
+      <div className="h-full flex items-center justify-center bg-deco-bg">
         <p
           className="text-deco-muted text-sm uppercase tracking-widest"
           style={{ fontFamily: "Playfair Display, serif" }}
@@ -161,20 +212,22 @@ export default function KanbanBoard({ projectId }) {
   }
 
   return (
+    <>
     <DndContext
+      sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen p-4 md:p-6 bg-deco-bg">
-        <div className="flex flex-row gap-4 overflow-x-auto pb-4">
+      <div className="h-full flex flex-col overflow-hidden bg-deco-bg p-4 md:p-6">
+        <div className="flex flex-row gap-4 overflow-x-auto flex-1 min-h-0 pb-2">
           {columns.map((col) => (
             <SortableContext
               key={col.id}
               items={col.cards.map((c) => c.id)}
               strategy={verticalListSortingStrategy}
             >
-              <KanbanColumn column={col} onAddCard={handleAddCard} />
+              <KanbanColumn column={col} onAddCard={handleAddCard} onCardClick={setSelectedCard} />
             </SortableContext>
           ))}
         </div>
@@ -197,5 +250,15 @@ export default function KanbanBoard({ projectId }) {
         ) : null}
       </DragOverlay>
     </DndContext>
+
+    {selectedCard && (
+      <CardEditModal
+        card={selectedCard}
+        projectId={projectId}
+        onClose={() => setSelectedCard(null)}
+        onCardUpdated={handleCardUpdated}
+      />
+    )}
+    </>
   )
 }

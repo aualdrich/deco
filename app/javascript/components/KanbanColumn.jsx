@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react"
+import { useDroppable } from "@dnd-kit/core"
 import KanbanCard from "./KanbanCard"
 
-export default function KanbanColumn({ column, onAddCard }) {
+export default function KanbanColumn({ column, onAddCard, onCardClick }) {
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: column.id })
   const [isAdding, setIsAdding] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -33,7 +35,7 @@ export default function KanbanColumn({ column, onAddCard }) {
   }
 
   return (
-    <div className="min-w-[280px] w-[280px] md:flex-1 md:min-w-0 rounded-lg p-3 flex flex-col gap-2 bg-deco-surface border border-deco-gold">
+    <div className="min-w-[280px] flex-shrink-0 md:flex-1 md:min-w-0 h-full rounded-lg p-3 flex flex-col bg-deco-surface border border-deco-gold">
       <h2
         className="text-sm font-semibold uppercase tracking-widest pb-2 mb-1 text-deco-gold border-b border-deco-border"
         style={{ fontFamily: "Playfair Display, serif" }}
@@ -41,9 +43,14 @@ export default function KanbanColumn({ column, onAddCard }) {
         {column.title}
       </h2>
 
-      <div className="flex flex-col gap-2">
+      <div
+        ref={setDropRef}
+        className={`flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto rounded transition-colors ${
+          isOver ? "bg-deco-raised/40" : ""
+        }`}
+      >
         {column.cards.map((card) => (
-          <KanbanCard key={card.id} card={card} />
+          <KanbanCard key={card.id} card={card} onCardClick={onCardClick} />
         ))}
       </div>
 
