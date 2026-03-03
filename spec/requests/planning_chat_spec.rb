@@ -5,20 +5,10 @@ RSpec.describe "PlanningChat", type: :request do
   let(:project) { Project.create!(name: "Test Project") }
   let(:card) { project.cards.create!(title: "Chatty Card", status: "todo") }
 
-  around do |example|
-    original_token = ENV["OPENCLAW_GATEWAY_TOKEN"]
-    original_url = ENV["OPENCLAW_GATEWAY_URL"]
-    original_model = ENV["OPENCLAW_GATEWAY_MODEL"]
-
-    ENV["OPENCLAW_GATEWAY_TOKEN"] = "test-token"
-    ENV["OPENCLAW_GATEWAY_URL"] = "http://127.0.0.1:18790"
-    ENV["OPENCLAW_GATEWAY_MODEL"] = "openclaw:deco"
-
-    example.run
-  ensure
-    ENV["OPENCLAW_GATEWAY_TOKEN"] = original_token
-    ENV["OPENCLAW_GATEWAY_URL"] = original_url
-    ENV["OPENCLAW_GATEWAY_MODEL"] = original_model
+  before do
+    allow(OpenclawGateway).to receive(:token).and_return("test-token")
+    allow(OpenclawGateway).to receive(:url).and_return("http://127.0.0.1:18790")
+    allow(OpenclawGateway).to receive(:model).and_return("openclaw:deco")
   end
 
   describe "POST /projects/:project_id/cards/:id/planning_chat" do
@@ -50,14 +40,11 @@ RSpec.describe "PlanningChat", type: :request do
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq("text/event-stream")
 
-      # It should proxy the raw SSE chunks.
       expect(response.body).to include("data:")
       expect(response.body).to include("[DONE]")
 
-      # It should authenticate to the gateway.
       expect(captured_req["Authorization"]).to eq("Bearer test-token")
 
-      # It should inject the system prompt and include the user's message.
       body = JSON.parse(captured_req.body)
       expect(body["stream"]).to be true
       expect(body["model"]).to eq("openclaw:deco")
@@ -72,7 +59,7 @@ RSpec.describe "PlanningChat", type: :request do
     end
 
     it "returns 500 when token is missing" do
-      ENV["OPENCLAW_GATEWAY_TOKEN"] = nil
+      allow(OpenclawGateway).to receive(:token).and_return(nil)
 
       post "/projects/#{project.id}/cards/#{card.id}/planning_chat",
         params: { message: "Hi" },
