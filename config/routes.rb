@@ -21,6 +21,10 @@ Rails.application.routes.draw do
       member do
         patch :archive
         patch :restore
+
+        # Planning chat history
+        get :chat_messages
+        post :append_chat_messages, path: :chat_messages
       end
     end
   end
