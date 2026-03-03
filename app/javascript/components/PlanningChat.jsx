@@ -1,4 +1,34 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+
+const PLAN_COMPLETE_START = "<!-- PLAN_COMPLETE -->"
+const PLAN_COMPLETE_END = "<!-- /PLAN_COMPLETE -->"
+
+function extractPlanText(content) {
+  if (!content) return null
+  const start = content.indexOf(PLAN_COMPLETE_START)
+  const end = content.indexOf(PLAN_COMPLETE_END)
+  if (start === -1 || end === -1) return null
+  if (end <= start) return null
+
+  const inner = content
+    .slice(start + PLAN_COMPLETE_START.length, end)
+    .replace(/^\s+/, "")
+    .replace(/\s+$/, "")
+
+  return inner || null
+}
+
+function stripPlanBlock(content) {
+  if (!content) return ""
+  const start = content.indexOf(PLAN_COMPLETE_START)
+  const end = content.indexOf(PLAN_COMPLETE_END)
+  if (start === -1 || end === -1 || end <= start) return content
+
+  const before = content.slice(0, start).replace(/\s+$/, "")
+  const after = content.slice(end + PLAN_COMPLETE_END.length).replace(/^\s+/, "")
+  const combined = [before, after].filter(Boolean).join("\n\n")
+  return combined || ""
+}
 
 function normalizeMessages(chatMessages) {
   if (!Array.isArray(chatMessages)) return []
@@ -32,12 +62,19 @@ function MessageBubble({ message }) {
   )
 }
 
-export default function PlanningChat({ card, onClose }) {
+export default function PlanningChat({ card, onClose, onAccept }) {
   const [draft, setDraft] = useState("")
   const [messages, setMessages] = useState(() => normalizeMessages(card?.chat_messages))
   const [isStreaming, setIsStreaming] = useState(false)
+  const [completedPlanText, setCompletedPlanText] = useState(null)
+  const [showCompletionActions, setShowCompletionActions] = useState(false)
   const backdropRef = useRef(null)
   const bottomRef = useRef(null)
+
+  const completion = useMemo(() => {
+    if (!completedPlanText) return null
+    return { planText: completedPlanText }
+  }, [completedPlanText])
 
   const projectId = card?.project_id || card?.project?.id
   const cardId = card?.id
@@ -45,6 +82,8 @@ export default function PlanningChat({ card, onClose }) {
   useEffect(() => {
     // Keep local state in sync when the card changes (e.g., user opens a different card)
     setMessages(normalizeMessages(card?.chat_messages))
+    setCompletedPlanText(null)
+    setShowCompletionActions(false)
   }, [cardId])
 
   useEffect(() => {
@@ -90,6 +129,7 @@ export default function PlanningChat({ card, onClose }) {
     ])
     setDraft("")
     setIsStreaming(true)
+    setShowCompletionActions(false)
 
     const csrfToken = document
       .querySelector('meta[name="csrf-token"]')
@@ -179,6 +219,23 @@ export default function PlanningChat({ card, onClose }) {
               // ignore malformed partial payloads
             }
           }
+        }
+      }
+
+      // 3) Detect completion markers after streaming finishes.
+      const extractedPlan = extractPlanText(assistantText)
+      if (extractedPlan) {
+        setCompletedPlanText(extractedPlan)
+        setShowCompletionActions(true)
+
+        const stripped = stripPlanBlock(assistantText)
+        if (stripped !== assistantText) {
+          assistantText = stripped
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempAssistantId ? { ...m, content: assistantText } : m
+            )
+          )
         }
       }
 
@@ -288,6 +345,43 @@ export default function PlanningChat({ card, onClose }) {
 
               {isStreaming ? (
                 <div className="text-xs text-deco-muted">Assistant is typing…</div>
+              ) : null}
+
+              {completion ? (
+                <div
+                  className="mt-4 rounded-lg bg-deco-raised border border-deco-border p-4"
+                  style={{ borderLeft: "3px solid var(--color-deco-gold)" }}
+                >
+                  <div
+                    className="text-deco-gold uppercase tracking-widest font-bold text-xs mb-2"
+                    style={{ fontFamily: "Playfair Display, serif" }}
+                  >
+                    Proposed plan
+                  </div>
+
+                  <div className="text-sm text-deco-text whitespace-pre-wrap break-words">
+                    {completion.planText}
+                  </div>
+
+                  {showCompletionActions ? (
+                    <div className="mt-4 flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="px-4 py-2 rounded text-sm uppercase tracking-widest font-semibold bg-deco-gold text-deco-bg hover:opacity-90 transition-opacity"
+                        onClick={() => onAccept?.(completion.planText)}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        className="px-4 py-2 rounded text-sm uppercase tracking-widest font-semibold border border-deco-border text-deco-text hover:bg-deco-surface transition-colors"
+                        onClick={() => setShowCompletionActions(false)}
+                      >
+                        Revise
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           )}
