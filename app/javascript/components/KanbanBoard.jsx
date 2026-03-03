@@ -9,13 +9,15 @@ import KanbanColumn from "./KanbanColumn"
 import BoardTopBar from "./BoardTopBar"
 import CardModal from "./CardModal"
 
+// NOTE: Column ids must match backend Card::STATUSES (snake_case).
+// Render order: todo → planning → ready_to_implement → doing → in_review → done
 const COLUMN_DEFINITIONS = [
-  { id: "todo",       title: "Todo" },
-  { id: "doing",      title: "Doing" },
-  { id: "in-review",  title: "In Review" },
-  { id: "in-qa",      title: "In QA" },
-  { id: "in-preview", title: "In Preview" },
-  { id: "done",       title: "Done" },
+  { id: "todo",                title: "Todo" },
+  { id: "planning",            title: "Planning" },
+  { id: "ready_to_implement",  title: "Ready to Implement" },
+  { id: "doing",               title: "Doing" },
+  { id: "in_review",           title: "In Review" },
+  { id: "done",                title: "Done" },
 ]
 
 // Prefer cards over columns when both are under the pointer
@@ -118,52 +120,78 @@ export default function KanbanBoard({ projectId, projectName }) {
 
     if (sourceColIndex === destColIndex) {
       // Same-column reorder — only meaningful when dropping on a sibling card
-      if (isOverColumn) return
-      const overIndex = destCol.cards.findIndex((c) => c.id === overId)
+      const overIndex = sourceCol.cards.findIndex((c) => c.id === overId)
       if (overIndex === -1) return
-      const nextCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
-      nextColumns = columns.map((col, idx) =>
-        idx === sourceColIndex ? { ...col, cards: nextCards } : col,
-      )
+
+      const newCards = arrayMove(sourceCol.cards, activeIndex, overIndex)
+      nextColumns = columns.map((col, idx) => idx === sourceColIndex ? { ...col, cards: newCards } : col)
+
+      // Update positions on server (best-effort)
+      const moved = newCards[overIndex]
+      persistCardMove(moved, sourceCol.id, overIndex)
     } else {
       // Cross-column move
       const movingCard = { ...sourceCol.cards[activeIndex], status: destCol.id }
-      const nextSourceCards = sourceCol.cards.filter((c) => c.id !== activeCardId)
-      const nextDestCards = [...destCol.cards]
 
-      if (isOverColumn) {
-        // Dropped on empty space — append to end of destination column
-        nextDestCards.push(movingCard)
-      } else {
-        const overIndex = destCol.cards.findIndex((c) => c.id === overId)
-        nextDestCards.splice(overIndex >= 0 ? overIndex : nextDestCards.length, 0, movingCard)
-      }
+      const sourceCards = [...sourceCol.cards]
+      sourceCards.splice(activeIndex, 1)
+
+      const destCards = [...destCol.cards]
+      // If dropping on a card, insert above it; if dropping on column, append
+      const overIndex = isOverColumn ? destCards.length : destCards.findIndex((c) => c.id === overId)
+      const insertIndex = overIndex === -1 ? destCards.length : overIndex
+      destCards.splice(insertIndex, 0, movingCard)
 
       nextColumns = columns.map((col, idx) => {
-        if (idx === sourceColIndex) return { ...col, cards: nextSourceCards }
-        if (idx === destColIndex) return { ...col, cards: nextDestCards }
+        if (idx === sourceColIndex) return { ...col, cards: sourceCards }
+        if (idx === destColIndex) return { ...col, cards: destCards }
         return col
       })
+
+      persistCardMove(movingCard, destCol.id, insertIndex)
     }
 
     setColumns(nextColumns)
-
-    const newColIndex = findColumnIndexByCardId(nextColumns, activeCardId)
-    const newCol = nextColumns[newColIndex]
-    const newPosition = newCol.cards.findIndex((c) => c.id === activeCardId)
-
-    fetch(`/projects/${projectId}/cards/${activeCardId}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": csrfToken(),
-      },
-      body: JSON.stringify({ card: { status: newCol.id, position: newPosition } }),
-    }).catch((err) => console.error("Failed to persist card move:", err))
   }
 
-  function csrfToken() {
-    return document.querySelector('meta[name="csrf-token"]')?.content ?? ""
+  async function persistCardMove(card, newStatus, newPosition) {
+    try {
+      await fetch(`/projects/${projectId}/cards/${card.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content ?? "",
+        },
+        body: JSON.stringify({ card: { status: newStatus, position: newPosition } }),
+      })
+    } catch (err) {
+      console.error("Failed to persist card move:", err)
+    }
+  }
+
+  function openAddCard(columnId) {
+    if (dragActivated.current) return
+    setCreatingInColumn(columnId)
+  }
+
+  async function createCard(title, description) {
+    const position = columns.find((c) => c.id === creatingInColumn)?.cards.length ?? 0
+    const res = await fetch(`/projects/${projectId}/cards`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content ?? "",
+      },
+      body: JSON.stringify({ card: { title, description, status: creatingInColumn, position } }),
+    })
+
+    if (!res.ok) throw new Error("Create failed")
+
+    const newCard = await res.json()
+    setColumns((prev) => prev.map((col) => {
+      if (col.id !== creatingInColumn) return col
+      return { ...col, cards: [...col.cards, newCard] }
+    }))
   }
 
   function handleCardClick(card) {
@@ -171,133 +199,91 @@ export default function KanbanBoard({ projectId, projectName }) {
     setSelectedCard(card)
   }
 
-  function handleUpdateCard(updatedCard) {
-    setColumns((prev) =>
-      prev.map((col) => ({
-        ...col,
-        cards: col.cards.map((c) => (c.id === updatedCard.id ? updatedCard : c)),
-      }))
-    )
+  function handleCardUpdated(updatedCard) {
+    setColumns((prev) => prev.map((col) => ({
+      ...col,
+      cards: col.cards.map((c) => c.id === updatedCard.id ? updatedCard : c),
+    })))
   }
 
-  function handleArchiveCard(cardId) {
-    setColumns((prev) =>
-      prev.map((col) => ({ ...col, cards: col.cards.filter((c) => c.id !== cardId) }))
-    )
+  function handleArchive(cardId) {
+    setColumns((prev) => prev.map((col) => ({
+      ...col,
+      cards: col.cards.filter((c) => c.id !== cardId),
+    })))
   }
 
-  function handleRestoreCard(cardId) {
-    setColumns((prev) =>
-      prev.map((col) => ({ ...col, cards: col.cards.filter((c) => c.id !== cardId) }))
-    )
+  function handleRestore(cardId) {
+    // Restored cards are forced to status "todo" on backend.
+    // Easiest UX: reload for now.
+    setStatusFilter("active")
   }
 
-  async function handleAddCard(columnId, title, description) {
-    const col = columns.find((c) => c.id === columnId)
-    const position = col ? col.cards.length : 0
-
-    try {
-      const res = await fetch(`/projects/${projectId}/cards`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken(),
-        },
-        body: JSON.stringify({ card: { title, description, status: columnId, position } }),
-      })
-      if (!res.ok) throw new Error("Failed to create card")
-      const newCard = await res.json()
-      setColumns((prev) =>
-        prev.map((c) =>
-          c.id === columnId ? { ...c, cards: [...c.cards, newCard] } : c,
-        ),
-      )
-    } catch (err) {
-      console.error("Failed to add card:", err)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-deco-bg">
-        <p
-          className="text-deco-muted text-sm uppercase tracking-widest"
-          style={{ fontFamily: "Playfair Display, serif" }}
-        >
-          Loading board…
-        </p>
-      </div>
-    )
-  }
+  const archivedView = statusFilter === "archived"
 
   return (
-    <>
-    {selectedCard && (
-      <CardModal
-        card={selectedCard}
-        projectId={projectId}
-        readOnly={statusFilter === "archived"}
-        onClose={() => setSelectedCard(null)}
-        onUpdate={handleUpdateCard}
-        onArchive={handleArchiveCard}
-        onRestore={handleRestoreCard}
-      />
-    )}
-    {creatingInColumn && (
-      <CardModal
-        card={null}
-        projectId={projectId}
-        readOnly={false}
-        onClose={() => setCreatingInColumn(null)}
-        onCreate={(title, description) => handleAddCard(creatingInColumn, title, description)}
-      />
-    )}
-    <DndContext
-      sensors={sensors}
-      collisionDetection={customCollision}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="h-screen bg-deco-bg flex flex-col w-full">
-        <BoardTopBar
-          projectName={projectName}
-          statusFilter={statusFilter}
-          onFilterChange={setStatusFilter}
-        />
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="p-4 md:p-6">
-            <div className="flex flex-row gap-4 overflow-x-auto pb-4">
+    <div className="min-h-screen bg-deco-bg text-deco-text">
+      <BoardTopBar projectName={projectName} statusFilter={statusFilter} onFilterChange={setStatusFilter} />
+
+      <div className="px-4 py-4">
+        {loading ? (
+          <div className="rounded p-4 text-sm bg-deco-surface border border-deco-border text-deco-text">Loading…</div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={customCollision}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-4 overflow-x-auto pb-2">
               {columns.map((col) => (
                 <SortableContext
                   key={col.id}
+                  id={col.id}
                   items={col.cards.map((c) => c.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <KanbanColumn column={col} onOpenAddCard={(colId) => setCreatingInColumn(colId)} onCardClick={handleCardClick} />
+                  <KanbanColumn
+                    column={col}
+                    onOpenAddCard={openAddCard}
+                    onCardClick={handleCardClick}
+                  />
                 </SortableContext>
               ))}
             </div>
-          </div>
-        </div>
+
+            <DragOverlay>
+              {activeCard ? (
+                <div className="rounded p-3 bg-deco-raised border border-deco-border" style={{ borderLeft: "3px solid var(--color-deco-gold)" }}>
+                  <p className="font-semibold text-sm text-deco-text">{activeCard.title}</p>
+                  <p className="text-xs mt-1 text-deco-muted">{activeCard.description}</p>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        )}
       </div>
 
-      <DragOverlay>
-        {activeCard ? (
-          <div
-            className="rounded p-3 bg-deco-raised border border-deco-border"
-            style={{
-              borderLeft: "3px solid var(--color-deco-gold)",
-              cursor: "grabbing",
-              opacity: 0.95,
-              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
-            }}
-          >
-            <p className="text-deco-text font-semibold text-sm m-0">{activeCard.title}</p>
-            <p className="text-deco-muted text-xs mt-1 mb-0">{activeCard.description}</p>
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
-    </>
+      {creatingInColumn ? (
+        <CardModal
+          projectId={projectId}
+          readOnly={false}
+          onClose={() => setCreatingInColumn(null)}
+          onCreate={createCard}
+        />
+      ) : null}
+
+      {selectedCard ? (
+        <CardModal
+          card={selectedCard}
+          projectId={projectId}
+          readOnly={archivedView}
+          onClose={() => setSelectedCard(null)}
+          onArchive={handleArchive}
+          onRestore={handleRestore}
+          onUpdate={handleCardUpdated}
+        />
+      ) : null}
+    </div>
   )
 }

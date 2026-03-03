@@ -19,7 +19,7 @@ function mockFetchJson(data, { ok = true } = {}) {
   )
 }
 
-const COLUMN_TITLES = ["Todo", "Doing", "In Review", "In QA", "In Preview", "Done"]
+const COLUMN_TITLES = ["Todo", "Planning", "Ready to Implement", "Doing", "In Review", "Done"]
 
 describe("KanbanBoard", () => {
   it("renders all 6 column headers when the board is empty", async () => {
