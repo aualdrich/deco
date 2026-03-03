@@ -1,6 +1,10 @@
 class Card < ApplicationRecord
   belongs_to :project
 
+  # Persisted planning chat history. Stored as JSON in a TEXT column (SQLite).
+  # Use a proc default to avoid sharing a mutable Array across instances.
+  attribute :chat_messages, :json, default: -> { [] }
+
   validates :title, presence: true
   validates :project_id, presence: true
 
