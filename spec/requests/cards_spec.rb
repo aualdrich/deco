@@ -107,6 +107,36 @@ RSpec.describe 'Cards', type: :request do
     end
   end
 
+  describe 'POST /projects/:project_id/cards/:id/accept_plan' do
+    let(:card) { project.cards.create!(title: 'Planned Card', status: 'planning', description: '') }
+
+    it 'sets the description and moves the card to ready_to_implement' do
+      post "/projects/#{project.id}/cards/#{card.id}/accept_plan",
+        params: { description: "Final plan text" },
+        as: :json
+
+      expect(response).to have_http_status(:ok)
+
+      card.reload
+      expect(card.description).to eq("Final plan text")
+      expect(card.status).to eq("ready_to_implement")
+
+      body = JSON.parse(response.body)
+      expect(body['status']).to eq('ready_to_implement')
+      expect(body['description']).to eq('Final plan text')
+    end
+
+    it 'returns 422 when description is blank' do
+      post "/projects/#{project.id}/cards/#{card.id}/accept_plan",
+        params: { description: "" },
+        as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      body = JSON.parse(response.body)
+      expect(body['errors']).to include('description is required')
+    end
+  end
+
   describe 'Planning chat messages' do
     let(:card) { project.cards.create!(title: 'Chatty Card', status: 'todo') }
 

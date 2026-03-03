@@ -1,6 +1,6 @@
 class CardsController < ApplicationController
   before_action :set_project
-  before_action :set_card, only: [:update, :archive, :restore, :chat_messages, :append_chat_messages]
+  before_action :set_card, only: [:update, :archive, :restore, :chat_messages, :append_chat_messages, :accept_plan]
 
   def index
     if params[:status] == "archived"
@@ -68,6 +68,21 @@ class CardsController < ApplicationController
 
     render json: @card
   rescue ActionController::ParameterMissing, ArgumentError => e
+    render json: { errors: [e.message] }, status: :unprocessable_entity
+  end
+
+  # POST /projects/:project_id/cards/:id/accept_plan
+  # Body: { description: "..." }
+  def accept_plan
+    description = params[:description].to_s
+    if description.blank?
+      render json: { errors: ["description is required"] }, status: :unprocessable_entity
+      return
+    end
+
+    @card.update!(description: description, status: "ready_to_implement")
+    render json: @card
+  rescue ActiveRecord::RecordInvalid => e
     render json: { errors: [e.message] }, status: :unprocessable_entity
   end
 

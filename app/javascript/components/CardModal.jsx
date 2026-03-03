@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-export default function CardModal({ card, projectId, readOnly, onClose, onArchive, onRestore, onCreate, onUpdate }) {
+export default function CardModal({ card, projectId, readOnly, onClose, onArchive, onRestore, onCreate, onUpdate, onOpenPlanningChat }) {
   const isCreate = !card
   const [title, setTitle] = useState(card?.title || "")
   const [description, setDescription] = useState(card?.description || "")
@@ -192,12 +192,24 @@ export default function CardModal({ card, projectId, readOnly, onClose, onArchiv
             </>
           ) : (
             <>
-              {/* Archive — left, destructive */}
+              {/* Left actions */}
               <div className="flex items-center gap-3">
+                {card?.status === "planning" ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPlanningChat?.(card)}
+                    disabled={busy}
+                    className="text-xs uppercase tracking-widest text-deco-muted hover:text-deco-text transition-colors"
+                  >
+                    Planning chat
+                  </button>
+                ) : null}
+
                 {confirming ? (
                   <>
                     <span className="text-xs text-deco-muted">Are you sure?</span>
                     <button
+                      type="button"
                       onClick={() => setConfirming(false)}
                       disabled={busy}
                       className="text-xs uppercase tracking-widest text-deco-muted hover:text-deco-text transition-colors"
@@ -205,6 +217,7 @@ export default function CardModal({ card, projectId, readOnly, onClose, onArchiv
                       Cancel
                     </button>
                     <button
+                      type="button"
                       onClick={handleArchive}
                       disabled={busy}
                       className="px-3 py-1.5 rounded text-xs uppercase tracking-widest border border-red-600 text-red-400 hover:bg-red-600 hover:text-white disabled:opacity-50 transition-colors"
@@ -214,6 +227,7 @@ export default function CardModal({ card, projectId, readOnly, onClose, onArchiv
                   </>
                 ) : (
                   <button
+                    type="button"
                     onClick={handleArchive}
                     disabled={busy}
                     className="text-xs uppercase tracking-widest text-deco-muted hover:text-red-400 transition-colors"

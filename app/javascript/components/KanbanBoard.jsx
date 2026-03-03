@@ -8,6 +8,7 @@ import {
 import KanbanColumn from "./KanbanColumn"
 import BoardTopBar from "./BoardTopBar"
 import CardModal from "./CardModal"
+import PlanningChat from "./PlanningChat"
 
 // NOTE: Column ids must match backend Card::STATUSES (snake_case).
 // Render order: todo → planning → ready_to_implement → doing → in_review → done
@@ -50,6 +51,7 @@ export default function KanbanBoard({ projectId, projectName }) {
   const [columns, setColumns] = useState(buildColumns([]))
   const [activeCard, setActiveCard] = useState(null)
   const [selectedCard, setSelectedCard] = useState(null)
+  const [planningChatCard, setPlanningChatCard] = useState(null)
   const [creatingInColumn, setCreatingInColumn] = useState(null)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState(() => {
@@ -200,10 +202,33 @@ export default function KanbanBoard({ projectId, projectName }) {
   }
 
   function handleCardUpdated(updatedCard) {
-    setColumns((prev) => prev.map((col) => ({
-      ...col,
-      cards: col.cards.map((c) => c.id === updatedCard.id ? updatedCard : c),
-    })))
+    setColumns((prev) => {
+      const sourceColIndex = findColumnIndexByCardId(prev, updatedCard.id)
+      const destColIndex = prev.findIndex((col) => col.id === updatedCard.status)
+
+      // If we can't find a destination column (unexpected status), fall back to in-place replace.
+      if (destColIndex === -1) {
+        return prev.map((col) => ({
+          ...col,
+          cards: col.cards.map((c) => c.id === updatedCard.id ? updatedCard : c),
+        }))
+      }
+
+      // Same column: replace in place
+      if (sourceColIndex !== -1 && sourceColIndex === destColIndex) {
+        return prev.map((col, idx) => idx === sourceColIndex
+          ? { ...col, cards: col.cards.map((c) => c.id === updatedCard.id ? updatedCard : c) }
+          : col
+        )
+      }
+
+      // Cross-column: remove from any column, append to destination
+      return prev.map((col, idx) => {
+        const without = col.cards.filter((c) => c.id !== updatedCard.id)
+        if (idx !== destColIndex) return { ...col, cards: without }
+        return { ...col, cards: [...without, updatedCard] }
+      })
+    })
   }
 
   function handleArchive(cardId) {
@@ -282,6 +307,37 @@ export default function KanbanBoard({ projectId, projectName }) {
           onArchive={handleArchive}
           onRestore={handleRestore}
           onUpdate={handleCardUpdated}
+          onOpenPlanningChat={(card) => setPlanningChatCard(card)}
+        />
+      ) : null}
+
+      {planningChatCard ? (
+        <PlanningChat
+          card={planningChatCard}
+          onClose={() => setPlanningChatCard(null)}
+          onAccept={async (planText) => {
+            try {
+              const res = await fetch(`/projects/${projectId}/cards/${planningChatCard.id}/accept_plan`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content ?? "",
+                },
+                body: JSON.stringify({ description: planText }),
+              })
+
+              if (!res.ok) throw new Error("Accept plan failed")
+
+              const updatedCard = await res.json()
+              handleCardUpdated(updatedCard)
+
+              // Close chat UI; also close the card modal so the user sees the move.
+              setPlanningChatCard(null)
+              setSelectedCard(null)
+            } catch (err) {
+              console.error(err)
+            }
+          }}
         />
       ) : null}
     </div>

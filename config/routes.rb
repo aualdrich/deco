@@ -28,6 +28,9 @@ Rails.application.routes.draw do
 
         # Planning chat (AI proxy)
         post :planning_chat, to: "planning_chat#create"
+
+        # Accept a proposed plan: sets description + status
+        post :accept_plan
       end
     end
   end
