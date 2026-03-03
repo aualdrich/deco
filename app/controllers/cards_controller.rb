@@ -50,7 +50,19 @@ class CardsController < ApplicationController
     new_messages = normalize_chat_messages!(params[:messages])
 
     @card.with_lock do
-      @card.chat_messages = Array(@card.chat_messages) + new_messages
+      existing = Array(@card.chat_messages)
+
+      # Idempotency: if the card already ends with the same role+content sequence,
+      # don't append duplicates (e.g., when a proxy endpoint persisted as well).
+      if existing.length >= new_messages.length
+        existing_tail = existing.last(new_messages.length).map { |m| [m["role"].to_s, m["content"].to_s] }
+        new_tail = new_messages.map { |m| [m["role"].to_s, m["content"].to_s] }
+        if existing_tail == new_tail
+          render json: @card and return
+        end
+      end
+
+      @card.chat_messages = existing + new_messages
       @card.save!
     end
 

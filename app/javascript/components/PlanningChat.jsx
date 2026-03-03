@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 function normalizeMessages(chatMessages) {
   if (!Array.isArray(chatMessages)) return []
@@ -34,10 +34,18 @@ function MessageBubble({ message }) {
 
 export default function PlanningChat({ card, onClose }) {
   const [draft, setDraft] = useState("")
+  const [messages, setMessages] = useState(() => normalizeMessages(card?.chat_messages))
+  const [isStreaming, setIsStreaming] = useState(false)
   const backdropRef = useRef(null)
   const bottomRef = useRef(null)
 
-  const messages = useMemo(() => normalizeMessages(card?.chat_messages), [card])
+  const projectId = card?.project_id || card?.project?.id
+  const cardId = card?.id
+
+  useEffect(() => {
+    // Keep local state in sync when the card changes (e.g., user opens a different card)
+    setMessages(normalizeMessages(card?.chat_messages))
+  }, [cardId])
 
   useEffect(() => {
     function handleKey(e) {
@@ -49,17 +57,172 @@ export default function PlanningChat({ card, onClose }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" })
-  }, [messages.length])
+  }, [messages, isStreaming])
 
   function handleBackdropClick(e) {
     // On mobile, the panel is full-screen so this never fires.
     if (e.target === backdropRef.current) onClose?.()
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    // Step 7 wires this up to the API.
+    if (isStreaming) return
+
+    const userText = draft.trim()
+    if (!userText) return
+
+    if (!projectId || !cardId) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Error: missing project/card id." }
+      ])
+      return
+    }
+
+    const tempUserId = `user-${Date.now()}`
+    const tempAssistantId = `assistant-${Date.now()}`
+
+    // 1) Optimistically render the user's message immediately.
+    setMessages((prev) => [
+      ...prev,
+      { id: tempUserId, role: "user", content: userText },
+      { id: tempAssistantId, role: "assistant", content: "" }
+    ])
     setDraft("")
+    setIsStreaming(true)
+
+    const csrfToken = document
+      .querySelector('meta[name="csrf-token"]')
+      ?.getAttribute("content")
+
+    let assistantText = ""
+
+    try {
+      // 2) Stream assistant response from the proxy endpoint.
+      const res = await fetch(
+        `/projects/${projectId}/cards/${cardId}/planning_chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
+          },
+          body: JSON.stringify({ message: userText })
+        }
+      )
+
+      if (!res.ok) {
+        let msg = `Request failed (${res.status})`
+        try {
+          const body = await res.json()
+          if (body?.errors?.length) msg = body.errors.join(", ")
+        } catch {
+          // ignore
+        }
+        throw new Error(msg)
+      }
+
+      if (!res.body) throw new Error("Streaming not supported in this browser")
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      let done = false
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read()
+        if (readerDone) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        // SSE events are separated by a blank line.
+        let sepIndex
+        while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+          const rawEvent = buffer.slice(0, sepIndex)
+          buffer = buffer.slice(sepIndex + 2)
+
+          const lines = rawEvent
+            .split("\n")
+            .map((l) => l.trim())
+            .filter((l) => l.startsWith("data:"))
+
+          for (const line of lines) {
+            const payload = line.replace(/^data:\s*/, "").trim()
+            if (!payload) continue
+            if (payload === "[DONE]") {
+              done = true
+              break
+            }
+
+            try {
+              const json = JSON.parse(payload)
+              const choice = (json.choices && json.choices[0]) || {}
+              const delta = choice.delta || {}
+              const message = choice.message || {}
+              const chunkText =
+                (delta && typeof delta.content === "string" && delta.content) ||
+                (message && typeof message.content === "string" && message.content) ||
+                ""
+
+              if (chunkText) {
+                assistantText += chunkText
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === tempAssistantId
+                      ? { ...m, content: assistantText }
+                      : m
+                  )
+                )
+              }
+            } catch {
+              // ignore malformed partial payloads
+            }
+          }
+        }
+      }
+
+      // 4) Persist both sides to chat_messages (idempotent on the server).
+      try {
+        await fetch(`/projects/${projectId}/cards/${cardId}/chat_messages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: "user", content: userText },
+              { role: "assistant", content: assistantText || "…" }
+            ]
+          })
+        })
+      } catch {
+        // If persistence fails, we still keep the local chat.
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content:
+              "(Warning) Could not persist chat history. Try refreshing and resending if needed."
+          }
+        ])
+      }
+    } catch (err) {
+      const errorText = err?.message || "Unknown error"
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempAssistantId
+            ? {
+                ...m,
+                content: `Error: ${errorText}`
+              }
+            : m
+        )
+      )
+    } finally {
+      setIsStreaming(false)
+    }
   }
 
   return (
@@ -122,9 +285,13 @@ export default function PlanningChat({ card, onClose }) {
               {messages.map((m, idx) => (
                 <MessageBubble key={m.id || m.created_at || idx} message={m} />
               ))}
-              <div ref={bottomRef} />
+
+              {isStreaming ? (
+                <div className="text-xs text-deco-muted">Assistant is typing…</div>
+              ) : null}
             </div>
           )}
+          <div ref={bottomRef} />
         </div>
 
         {/* Input */}
@@ -137,16 +304,24 @@ export default function PlanningChat({ card, onClose }) {
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  // Let the form submit handler run.
+                  e.currentTarget.form?.requestSubmit()
+                }
+              }}
               rows={1}
-              placeholder="Type a message…"
-              className="flex-1 resize-none rounded px-3 py-2 text-sm bg-deco-raised text-deco-text border border-deco-border outline-none focus:border-deco-gold placeholder-deco-muted"
+              placeholder={isStreaming ? "Waiting for assistant…" : "Type a message…"}
+              disabled={isStreaming}
+              className="flex-1 resize-none rounded px-3 py-2 text-sm bg-deco-raised text-deco-text border border-deco-border outline-none focus:border-deco-gold placeholder-deco-muted disabled:opacity-70"
             />
             <button
               type="submit"
               className="px-4 py-2 rounded text-sm uppercase tracking-widest font-semibold bg-deco-gold text-deco-bg hover:opacity-90 disabled:opacity-50 transition-opacity"
-              disabled={!draft.trim()}
+              disabled={isStreaming || !draft.trim()}
             >
-              Send
+              {isStreaming ? "…" : "Send"}
             </button>
           </div>
         </form>
