@@ -25,6 +25,9 @@ Rails.application.routes.draw do
         # Planning chat history
         get :chat_messages
         post :append_chat_messages, path: :chat_messages
+
+        # Planning chat (AI proxy)
+        post :planning_chat, to: "planning_chat#create"
       end
     end
   end
