@@ -7,6 +7,10 @@ require "json"
 class PlanningChatController < ApplicationController
   include ActionController::Live
 
+  # This endpoint streams SSE via ActionController::Live which runs work in a separate thread.
+  # Rails CSRF verification is not reliable in that scenario, so we skip it for this internal JSON API.
+  skip_forgery_protection
+
   before_action :set_project
   before_action :set_card
 

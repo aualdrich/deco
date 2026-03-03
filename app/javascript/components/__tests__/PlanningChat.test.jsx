@@ -87,6 +87,29 @@ describe("PlanningChat", () => {
     expect(screen.getByText("Hi! How can I help?")).toBeInTheDocument()
   })
 
+  it("auto-kickoff: when opened on a planning card with no chat history, it sends an intro message", async () => {
+    stubFetchForChat({ assistantContent: "What are the requirements?" })
+
+    const card = buildCard({
+      status: "planning",
+      title: "In-App Planning",
+      description: "Let users plan features inside the app",
+      chat_messages: [],
+    })
+
+    render(<PlanningChat card={card} onClose={() => {}} onAccept={() => {}} />)
+
+    // The assistant should respond without the user typing anything.
+    await waitFor(() => {
+      expect(screen.getByText("What are the requirements?")).toBeInTheDocument()
+    })
+
+    // And the intro message should be present in the chat history.
+    expect(
+      screen.getByText(/I'd like to plan this feature: In-App Planning/i)
+    ).toBeInTheDocument()
+  })
+
   it("input and send: typing a message and clicking Send adds the user message to the display", async () => {
     stubFetchForChat({ assistantContent: "Sure." })
     const card = buildCard()

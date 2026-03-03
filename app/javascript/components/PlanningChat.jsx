@@ -70,6 +70,7 @@ export default function PlanningChat({ card, onClose, onAccept }) {
   const [showCompletionActions, setShowCompletionActions] = useState(false)
   const backdropRef = useRef(null)
   const bottomRef = useRef(null)
+  const autoStartedRef = useRef(false)
 
   const completion = useMemo(() => {
     if (!completedPlanText) return null
@@ -84,6 +85,7 @@ export default function PlanningChat({ card, onClose, onAccept }) {
     setMessages(normalizeMessages(card?.chat_messages))
     setCompletedPlanText(null)
     setShowCompletionActions(false)
+    autoStartedRef.current = false
   }, [cardId])
 
   useEffect(() => {
@@ -98,17 +100,34 @@ export default function PlanningChat({ card, onClose, onAccept }) {
     bottomRef.current?.scrollIntoView({ block: "end" })
   }, [messages, isStreaming])
 
+  useEffect(() => {
+    // Auto-kickoff the conversation when a card enters Planning.
+    if (autoStartedRef.current) return
+    if (isStreaming) return
+    if (!cardId) return
+    if ((card?.status || "").toString().toLowerCase() !== "planning") return
+    if (messages.length > 0) return
+
+    autoStartedRef.current = true
+
+    const title = (card?.title || "").trim()
+    const desc = (card?.description || "").trim()
+    const intro = `I'd like to plan this feature: ${title || "(untitled)"}.${desc ? `\n\n${desc}` : ""}`
+
+    // Fire and forget; errors are rendered into the chat.
+    sendUserMessage(intro)
+  }, [cardId, card?.status, card?.title, card?.description, isStreaming, messages.length])
+
   function handleBackdropClick(e) {
     // On mobile, the panel is full-screen so this never fires.
     if (e.target === backdropRef.current) onClose?.()
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+  async function sendUserMessage(userText) {
     if (isStreaming) return
 
-    const userText = draft.trim()
-    if (!userText) return
+    const trimmed = (userText || "").trim()
+    if (!trimmed) return
 
     if (!projectId || !cardId) {
       setMessages((prev) => [
@@ -124,7 +143,7 @@ export default function PlanningChat({ card, onClose, onAccept }) {
     // 1) Optimistically render the user's message immediately.
     setMessages((prev) => [
       ...prev,
-      { id: tempUserId, role: "user", content: userText },
+      { id: tempUserId, role: "user", content: trimmed },
       { id: tempAssistantId, role: "assistant", content: "" }
     ])
     setDraft("")
@@ -148,7 +167,7 @@ export default function PlanningChat({ card, onClose, onAccept }) {
             Accept: "text/event-stream",
             ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {})
           },
-          body: JSON.stringify({ message: userText })
+          body: JSON.stringify({ message: trimmed })
         }
       )
 
@@ -249,7 +268,7 @@ export default function PlanningChat({ card, onClose, onAccept }) {
           },
           body: JSON.stringify({
             messages: [
-              { role: "user", content: userText },
+              { role: "user", content: trimmed },
               { role: "assistant", content: assistantText || "…" }
             ]
           })
@@ -280,6 +299,11 @@ export default function PlanningChat({ card, onClose, onAccept }) {
     } finally {
       setIsStreaming(false)
     }
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    await sendUserMessage(draft)
   }
 
   return (

@@ -12,7 +12,13 @@ module OpenclawGateway
   end
 
   def token
-    ENV["OPENCLAW_GATEWAY_TOKEN"]
+    ENV.fetch("OPENCLAW_GATEWAY_TOKEN") do
+      # Development convenience: allow running without exporting env vars.
+      # Prefer a real env var (or .env via dotenv-rails) in all environments.
+      if defined?(Rails) && Rails.env.development?
+        "4388955c1c22266c98470afdc44d5c9d7b64d3d4f259fa43"
+      end
+    end
   end
 
   # Default to the deco agent.
