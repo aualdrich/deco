@@ -42,6 +42,14 @@ function findColumnIndexByCardId(columns, cardId) {
   return columns.findIndex((col) => col.cards.some((c) => c.id === cardId))
 }
 
+function findCardById(columns, cardId) {
+  for (const col of columns) {
+    const found = col.cards.find((c) => c.id === cardId)
+    if (found) return found
+  }
+  return null
+}
+
 export default function KanbanBoard({ projectId, projectName }) {
   const dragActivated = useRef(false)
   const sensors = useSensors(
@@ -151,6 +159,16 @@ export default function KanbanBoard({ projectId, projectName }) {
       })
 
       persistCardMove(movingCard, destCol.id, insertIndex)
+
+      // Trigger rules for Planning chat
+      if (sourceCol.id === "planning" && destCol.id !== "planning") {
+        if (planningChatCard?.id === movingCard.id) setPlanningChatCard(null)
+      }
+
+      if (sourceCol.id !== "planning" && destCol.id === "planning") {
+        setPlanningChatCard(movingCard)
+        setSelectedCard(null)
+      }
     }
 
     setColumns(nextColumns)
@@ -202,6 +220,9 @@ export default function KanbanBoard({ projectId, projectName }) {
   }
 
   function handleCardUpdated(updatedCard) {
+    const prevCard = findCardById(columns, updatedCard.id)
+    const prevStatus = prevCard?.status
+
     setColumns((prev) => {
       const sourceColIndex = findColumnIndexByCardId(prev, updatedCard.id)
       const destColIndex = prev.findIndex((col) => col.id === updatedCard.status)
@@ -229,6 +250,16 @@ export default function KanbanBoard({ projectId, projectName }) {
         return { ...col, cards: [...without, updatedCard] }
       })
     })
+
+    // Trigger rules for Planning chat (manual status edits, etc.)
+    if (prevStatus === "planning" && updatedCard.status !== "planning") {
+      if (planningChatCard?.id === updatedCard.id) setPlanningChatCard(null)
+    }
+
+    if (prevStatus !== "planning" && updatedCard.status === "planning") {
+      setPlanningChatCard(updatedCard)
+      setSelectedCard(null)
+    }
   }
 
   function handleArchive(cardId) {
